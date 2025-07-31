@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RuleFlow Builder - POC Basic</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+     
+        <div class="container"> 
+            <div class="row mb-4">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 text-primary"><i class="bi bi-gear-fill"></i> RuleFlow POC</h1>
+                    <p class="lead text-muted">Interactive Business Logic Engine Demo</p>
+                           
+                </div>
+            </div>
+        </div>
+
+
+
+        
+        <!-- Main Content -->
+        <div class="container-row">
+            <!-- Builder Area -->
+            <div class=" conent-left">
+                <div class="card" style="margin-left: 14px; margin-right: 10px;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Components</h5>
+                        
+                        <!-- Component Selector Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-primary dropdown-toggle" type="button" 
+                                    id="componentDropdown" data-bs-toggle="dropdown">
+                                Add Component
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" data-component="formula">
+                                    <i class="bi bi-calculator"></i> Formula
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" data-component="switch">
+                                    <i class="bi bi-shuffle"></i> Switch Logic
+                                </a></li>
+
+                                <li><a class="dropdown-item" href="#"  data-component="rules">
+                                    <i class="bi bi-list-check"></i> Accumulative Rules
+                                </a></li>
+
+                          
+                                <li><a class="dropdown-item" href="#" data-component="scoring">
+                                        <i class="bi bi-bar-chart"></i> Scoring Matrix
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="componentContainer">
+                            <div id="emptyState" class="text-center text-muted py-5">
+                                <i class="bi bi-plus-circle fs-1 mb-3"></i>
+                                <h5>No components yet</h5>
+                                <p>Click "Add Component" to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Configuration Section -->
+                <div class=" mt-4" style="margin-left: 14px; margin-right: 10px;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0"><i class="bi bi-play-circle"></i> Test Configuration</h6>
+                                <div class="btn-group btn-group-sm">
+                                    <button id="validateBtn" class="btn btn-outline-primary">
+                                        <i class="bi bi-check-circle"></i> Validate
+                                    </button>
+                                    <button id="executeBtn" class="btn btn-outline-success">
+                                        <i class="bi bi-play"></i> Execute
+                                    </button>
+                                    <button id="generateCodeBtn" class="btn btn-outline-info">
+                                        <i class="bi bi-code-slash"></i> Generate Code
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Input Variables -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <h6>Input Variables</h6>
+                                        <div id="inputVariables" class="variables-panel">
+                                            <p class="text-muted mb-0">Add components to see input variables</p>
+                                        </div>
+                                        <button id="addCustomBtn" class="btn btn-sm btn-outline-secondary mt-2">
+                                            <i class="bi bi-plus"></i> Add Custom Variable
+                                        </button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Results</h6>
+                                        <div id="resultsPanel" class="result-panel p-3">
+                                            <p class="text-muted mb-0">Execute configuration to see results</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Generated Code -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0">Generated Code</h6>
+                                        <button id="copyCodeBtn" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-clipboard"></i> Copy Code
+                                        </button>
+                                    </div>
+                                    <textarea id="generatedCode" class="form-control code-editor" rows="8" readonly 
+                                              placeholder="Generated code will appear here..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debug Console -->
+                <div class="row mt-4" id="debugSection" style="display: none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-bug"></i> Debug Console</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="debugConsole" class="debug-console p-3">
+                                    <!-- Debug output -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+             <div class="col-resize"> </div>
+            
+            <!-- Sidebar -->
+            <div class=" conent-right">
+                <div class="card sticky-top" style="top: 1rem; margin-left: 10px; margin-right: 14px; top: 0px !important;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Generated JSON</h6>
+                        <button id="copyJsonBtn" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-clipboard"></i> Copy
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <pre id="jsonOutput" class="json-preview mb-0">{
+  "formulas": []
+}</pre>
+                    </div>
+                   
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    
+    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="js/shared/operators.js"></script>
+
+    <!-- RuleFlow Core Engine -->
+    <script src="js/core/FunctionRegistry.js"></script>
+    <script src="js/core/ExpressionEvaluator.js"></script>
+    <script src="js/core/FormulaProcessor.js"></script>
+    <script src="js/RuleFlow.js"></script>
+    
+    <!-- UI Logic -->
+    <script src="js/ui/examples.js"></script>
+    <script src="js/ui/interface.js"></script>
+
+    <!-- Component Classes - เพิ่มบรรทัดเหล่านี้ -->
+    <script src="components/formula.js"></script>
+    <script src="components/switch.js"></script>
+    <script src="components/rules.js"></script>
+
+    <script src="components/scoring.js"></script>
+
+    <script src="script.js"></script>
+
+<style>
+ .container-row {
+  padding-top: 5px;
+  display: flex;
+  width: 100%;
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.conent-left {
+
+  width: calc(70% - 3px);
+  min-width: 10%;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  box-sizing: border-box;
+}
+
+.conent-right {
+
+  flex-grow: 1;
+  min-width: 10%;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  box-sizing: border-box;
+}
+
+.col-resize {
+  width: 3px;
+  background: #ddd;
+  cursor: col-resize;
+  user-select: none;
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+}
+ </style>
+
+<script>
+  const resizer = document.querySelector('.col-resize');
+  const left = document.querySelector('.conent-left');
+  const container = document.querySelector('.container-row');
+
+  let isDragging = false;
+
+  resizer.addEventListener('mousedown', function (e) {
+    isDragging = true;
+    document.body.style.cursor = 'col-resize';
+  });
+
+  document.addEventListener('mousemove', function (e) {
+    if (!isDragging) return;
+
+    const containerRect = container.getBoundingClientRect();
+    let newLeftWidth = e.clientX - containerRect.left;
+    const minWidth = containerRect.width * 0.1;
+    const maxWidth = containerRect.width * 0.9;
+
+    if (newLeftWidth < minWidth) newLeftWidth = minWidth;
+    if (newLeftWidth > maxWidth) newLeftWidth = maxWidth;
+
+    left.style.width = newLeftWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', function () {
+    if (isDragging) {
+      isDragging = false;
+      document.body.style.cursor = '';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# macOS Spotlight
+.Spotlight-V100
+.Trashes
+
+# macOS Finder metadata
+.fseventsd
+.idea/
+.vscode/
+*.log
+
+# Composer dependencies (ถ้าใช้)
+vendor/
+composer.lock
+
+# PHP debug cache
+*.log
+*.cache
+*.tmp
+
+# Node (ถ้ามี dev ด้วย JS)
+node_modules/
+dist/
+
+# Ignore config secrets
+.env
+.env.*
+
+# Template cache
+src/Templates/Providers/cache/
+php/src/Templates/Providers/cache/
+php/src/Templates/Providers/cache/.template_cache.json
+
+
+# TypeScript/Node.js 
+ts/node_modules/
+ts/dist/
+ts/build/
+ts/*.tsbuildinfo
+ts/coverage/
+ts/.vite/
+ts/.eslintcache
+ts/npm-debug.log*
+ts/yarn-debug.log*
+ts/yarn-error.log*
+
+# Package manager lock files (TypeScript)
+ts/yarn.lock
+ts/pnpm-lock.yaml
+# ts/package-lock.json  # uncomment ถ้าใช้ yarn หรือ pnpm
+
+# TypeScript environment
+ts/.env
+ts/.env.*
+
+# TypeScript IDE settings (optional)
+ts/.vscode/settings.json
+ts/.vscode/launch.json
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
