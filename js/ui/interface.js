@@ -344,7 +344,7 @@ const RuleFlowUI = {
      * Generate JavaScript code
      */
     generateCode() {
-        const config = window.getCurrentConfig ? window.getCurrentConfig() : null; 
+        /*const config = window.getCurrentConfig ? window.getCurrentConfig() : null; 
 
         if (!config) {
             this.showError('No configuration available for code generation');
@@ -359,7 +359,7 @@ const RuleFlowUI = {
         } catch (error) {
             this.showError(`Code generation failed: ${error.message}`);
             this.debug(`Code generation failed: ${error.message}`, 'error');
-        }
+        }*/
     },
 
     /**
