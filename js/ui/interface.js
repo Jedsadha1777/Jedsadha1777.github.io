@@ -13,7 +13,7 @@ const RuleFlowUI = {
      */
     init() {
         this.ruleFlow = new RuleFlow();
-        this.bindEvents();
+        // this.bindEvents();
         this.initializeDebugConsole();
         this.debug('RuleFlow UI initialized', 'success');
     },
@@ -21,30 +21,30 @@ const RuleFlowUI = {
     /**
      * Bind all UI events
      */
-    bindEvents() {
-        // Button events
-        $('#validateBtn').on('click', () => this.validateConfiguration());
-        $('#executeBtn').on('click', () => this.executeRules());
-        $('#generateCodeBtn').on('click', () => this.generateCode());
-        $('#copyCodeBtn').on('click', () => this.copyCode());
-        $('#addCustomBtn').on('click', () => this.addCustomVariable());
+    // bindEvents() {
+    //     // Button events
+    //     $('#validateBtn').on('click', () => this.validateConfiguration());
+    //     $('#executeBtn').on('click', () => this.executeRules());
+    //     $('#generateCodeBtn').on('click', () => this.generateCode());
+    //     $('#copyCodeBtn').on('click', () => this.copyCode());
+    //     $('#addCustomBtn').on('click', () => this.addCustomVariable());
 
-        // Configuration editor events
-        $('#configEditor').on('input', () => {
-            this.debounce(() => {
-                this.updateInputVariables();
-            }, 500);
-        });
+    //     // Configuration editor events
+    //     $('#configEditor').on('input', () => {
+    //         this.debounce(() => {
+    //             this.updateInputVariables();
+    //         }, 500);
+    //     });
 
-        // Input change events
-        $(document).on('input', '.input-variable input', () => {
-            this.debounce(() => {
-                this.autoExecute();
-            }, 300);
-        });
+    //     // Input change events
+    //     $(document).on('input', '.input-variable input', () => {
+    //         this.debounce(() => {
+    //             this.autoExecute();
+    //         }, 300);
+    //     });
 
-        this.debug('UI events bound', 'info');
-    },
+    //     this.debug('UI events bound', 'info');
+    // },
 
     /**
      * Initialize debug console
@@ -246,121 +246,121 @@ const RuleFlowUI = {
     /**
      * Get current input values
      */
-    getCurrentInputs() {
-        const inputs = {};
+    // getCurrentInputs() {
+    //     const inputs = {};
         
-        $('.input-variable input').each(function() {
-            const $input = $(this);
-            const value = $input.val();
-            const name = $input.attr('id').replace('input_', '');
+    //     $('.input-variable input').each(function() {
+    //         const $input = $(this);
+    //         const value = $input.val();
+    //         const name = $input.attr('id').replace('input_', '');
             
-            if (value !== '') {
-                inputs[name] = parseFloat(value) || value;
-            }
-        });
+    //         if (value !== '') {
+    //             inputs[name] = parseFloat(value) || value;
+    //         }
+    //     });
         
-        return inputs;
-    },
+    //     return inputs;
+    // },
 
     /**
      * Validate current configuration
      */
-    validateConfiguration() {
-        const config = this.getCurrentConfig();
-        if (!config) {
-            this.showError('No configuration available to validate');
-            return;
-        }
+    // validateConfiguration() {
+    //     const config = this.getCurrentConfig();
+    //     if (!config) {
+    //         this.showError('No configuration available to validate');
+    //         return;
+    //     }
 
-        const validation = this.ruleFlow.validateConfig(config);
+    //     const validation = this.ruleFlow.validateConfig(config);
         
-        if (validation.valid) {
-            this.showSuccess('Configuration is valid!');
-            if (validation.warnings.length > 0) {
-                this.showWarning(`Warnings: ${validation.warnings.join(', ')}`);
-            }
-        } else {
-            this.showError(`Validation failed: ${validation.errors.join(', ')}`);
-        }
+    //     if (validation.valid) {
+    //         this.showSuccess('Configuration is valid!');
+    //         if (validation.warnings.length > 0) {
+    //             this.showWarning(`Warnings: ${validation.warnings.join(', ')}`);
+    //         }
+    //     } else {
+    //         this.showError(`Validation failed: ${validation.errors.join(', ')}`);
+    //     }
         
-        this.debug(`Validation result: ${validation.valid}`, 
-                  validation.valid ? 'success' : 'error');
-    },
+    //     this.debug(`Validation result: ${validation.valid}`, 
+    //               validation.valid ? 'success' : 'error');
+    // },
 
     /**
      * Execute rules with current inputs
      */
-    async executeRules() {
-        const config = this.getCurrentConfig();
-        const inputs = this.getCurrentInputs();
+    // async executeRules() {
+    //     const config = this.getCurrentConfig();
+    //     const inputs = this.getCurrentInputs();
         
-        if (!config) {
-            this.showError('No configuration available to execute');
-            return;
-        }
+    //     if (!config) {
+    //         this.showError('No configuration available to execute');
+    //         return;
+    //     }
 
-        if (Object.keys(inputs).length === 0) {
-            this.showWarning('No input values provided');
-        }
+    //     if (Object.keys(inputs).length === 0) {
+    //         this.showWarning('No input values provided');
+    //     }
 
-        try {
-            const result = await this.ruleFlow.evaluate(config, inputs);
+    //     try {
+    //         const result = await this.ruleFlow.evaluate(config, inputs);
             
-            if (result.success) {
-                this.showResults(result.results, result.executionTime);
-                this.debug(`Execution successful in ${result.executionTime}ms`, 'success');
-            } else {
-                this.showError(`Execution failed: ${result.error}`);
-                this.debug(`Execution failed: ${result.error}`, 'error');
-            }
-        } catch (error) {
-            this.showError(`Execution error: ${error.message}`);
-            this.debug(`Execution error: ${error.message}`, 'error');
-        }
-    },
+    //         if (result.success) {
+    //             this.showResults(result.results, result.executionTime);
+    //             this.debug(`Execution successful in ${result.executionTime}ms`, 'success');
+    //         } else {
+    //             this.showError(`Execution failed: ${result.error}`);
+    //             this.debug(`Execution failed: ${result.error}`, 'error');
+    //         }
+    //     } catch (error) {
+    //         this.showError(`Execution error: ${error.message}`);
+    //         this.debug(`Execution error: ${error.message}`, 'error');
+    //     }
+    // },
 
     /**
      * Auto-execute rules (for real-time updates)
      */
-    async autoExecute() {
-        const config = this.getCurrentConfig();
-        const inputs = this.getCurrentInputs();
+    // async autoExecute() {
+    //     const config = this.getCurrentConfig();
+    //     const inputs = this.getCurrentInputs();
         
-        if (!config || Object.keys(inputs).length === 0) {
-            return;
-        }
+    //     if (!config || Object.keys(inputs).length === 0) {
+    //         return;
+    //     }
 
-        try {
-            const result = await this.ruleFlow.evaluate(config, inputs);
-            if (result.success) {
-                this.showResults(result.results, result.executionTime, true);
-            }
-        } catch (error) {
-            this.debug(`Auto-execution failed: ${error.message}`, 'warning');
-        }
-    },
+    //     try {
+    //         const result = await this.ruleFlow.evaluate(config, inputs);
+    //         if (result.success) {
+    //             this.showResults(result.results, result.executionTime, true);
+    //         }
+    //     } catch (error) {
+    //         this.debug(`Auto-execution failed: ${error.message}`, 'warning');
+    //     }
+    // },
 
     /**
      * Generate JavaScript code
      */
-    generateCode() {
-        /*const config = window.getCurrentConfig ? window.getCurrentConfig() : null; 
+    // generateCode() {
+    //     const config = window.getCurrentConfig ? window.getCurrentConfig() : null; 
 
-        if (!config) {
-            this.showError('No configuration available for code generation');
-            return;
-        }
+    //     if (!config) {
+    //         this.showError('No configuration available for code generation');
+    //         return;
+    //     }
 
-        try {
-            const generatedCode = this.ruleFlow.generateCode(config);
-            $('#generatedCode').val(generatedCode);
-            this.showSuccess('Code generated successfully!');
-            this.debug('Code generation successful', 'success');
-        } catch (error) {
-            this.showError(`Code generation failed: ${error.message}`);
-            this.debug(`Code generation failed: ${error.message}`, 'error');
-        }*/
-    },
+    //     try {
+    //         const generatedCode = this.ruleFlow.generateCode(config);
+    //         $('#generatedCode').val(generatedCode);
+    //         this.showSuccess('Code generated successfully!');
+    //         this.debug('Code generation successful', 'success');
+    //     } catch (error) {
+    //         this.showError(`Code generation failed: ${error.message}`);
+    //         this.debug(`Code generation failed: ${error.message}`, 'error');
+    //     }
+    // },
 
     /**
      * Copy generated code to clipboard
@@ -438,34 +438,34 @@ const RuleFlowUI = {
     /**
      * Show results in panel
      */
-    showResults(results, executionTime, isAuto = false) {
-        const $panel = $('#resultsPanel');
-        $panel.removeClass('error-panel warning-panel').addClass('result-panel');
+    // showResults(results, executionTime, isAuto = false) {
+    //     const $panel = $('#resultsPanel');
+    //     $panel.removeClass('error-panel warning-panel').addClass('result-panel');
         
-        const title = isAuto ? 'Auto Results' : 'Execution Results';
-        let html = `<h6>${title}</h6>`;
+    //     const title = isAuto ? 'Auto Results' : 'Execution Results';
+    //     let html = `<h6>${title}</h6>`;
         
-        if (Object.keys(results).length === 0) {
-            html += '<p class="text-muted mb-0">No results</p>';
-        } else {
-            html += '<div class="results-grid">';
-            Object.entries(results).forEach(([key, value]) => {
-                html += `
-                    <div class="result-item d-flex justify-content-between">
-                        <span class="fw-semibold">${key}:</span>
-                        <span class="text-primary">${this.formatValue(value)}</span>
-                    </div>
-                `;
-            });
-            html += '</div>';
-        }
+    //     if (Object.keys(results).length === 0) {
+    //         html += '<p class="text-muted mb-0">No results</p>';
+    //     } else {
+    //         html += '<div class="results-grid">';
+    //         Object.entries(results).forEach(([key, value]) => {
+    //             html += `
+    //                 <div class="result-item d-flex justify-content-between">
+    //                     <span class="fw-semibold">${key}:</span>
+    //                     <span class="text-primary">${this.formatValue(value)}</span>
+    //                 </div>
+    //             `;
+    //         });
+    //         html += '</div>';
+    //     }
         
-        if (executionTime !== undefined) {
-            html += `<small class="text-muted d-block mt-2">Execution time: ${executionTime}ms</small>`;
-        }
+    //     if (executionTime !== undefined) {
+    //         html += `<small class="text-muted d-block mt-2">Execution time: ${executionTime}ms</small>`;
+    //     }
         
-        $panel.html(html);
-    },
+    //     $panel.html(html);
+    // },
 
     /**
      * Format value for display

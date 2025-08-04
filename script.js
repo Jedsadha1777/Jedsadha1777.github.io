@@ -930,7 +930,7 @@ $(document).ready(function () {
                     <span class="badge bg-secondary ms-1">custom</span>
                 </label>
                 <div class="input-group input-group-sm">
-                    <input type="number" 
+                    <input type="text" 
                         class="form-control" 
                         id="input_${cleanName}" 
                         placeholder="Enter ${cleanName}"
@@ -1641,7 +1641,7 @@ $(document).ready(function () {
             const $inputDiv = $(`
                <div class="input-variable mb-2" data-input="${input}">
                    <label class="form-label small">${input}</label>
-                   <input type="number" 
+                   <input type="text" 
                           class="form-control form-control-sm" 
                           id="input_${input}" 
                           placeholder="Enter ${input}"
@@ -1661,15 +1661,25 @@ $(document).ready(function () {
     function getCurrentInputs() {
         const inputs = {};
 
+       
+
         $('.input-variable input').each(function () {
             const $input = $(this);
             const value = $input.val();
+            
+
             const name = $input.attr('id').replace('input_', '');
 
             if (value !== '') {
-                inputs[name] = parseFloat(value) || value;
+                // ลองแปลงเป็นตัวเลขก่อน - ใช้ regex ตรวจสอบว่าเป็นตัวเลขจริงๆ
+                if (/^-?\d*\.?\d+$/.test(value.trim())) {
+                    inputs[name] = parseFloat(value);
+                } else {
+                    inputs[name] = value.trim();
+                }
             }
         });
+
 
         return inputs;
     }
@@ -1735,18 +1745,34 @@ $(document).ready(function () {
         }
 
         try {
+            // เริ่มจับเวลา
+            const startTime = performance.now();
+            
+            console.log('DEBUG Config:', config);
+            console.log('DEBUG Inputs:', inputs);
             const result = await ruleFlow.evaluate(config, inputs);
+            console.log('DEBUG Result:', result);
+            
+            // จบการจับเวลา
+            const endTime = performance.now();
+            const executionTime = Math.round((endTime - startTime) * 100) / 100;
 
-            if (result.success) {
-                showResults(result.results, result.executionTime);
-                debug(`Execution successful in ${result.executionTime}ms`, 'success');
-            } else {
-                showError(`Execution failed: ${result.error}`);
-                debug(`Execution failed: ${result.error}`, 'error');
-            }
+            // แสดงผลลัพธ์โดยตรง (ไม่เช็ค result.success)
+            showResults(result.results, executionTime);
+            
+            debug(`Execution successful in ${executionTime}ms`, 'success');
+            
         } catch (error) {
             showError(`Execution error: ${error.message}`);
             debug(`Execution error: ${error.message}`, 'error');
+            
+            // debug info 
+            if (error.message.includes('starts_with') || error.message.includes('Unknown operator')) {
+                debug(`Operator error - check if starts_with is implemented correctly`, 'error');
+                console.error('Full error:', error);
+                console.log('Config:', config);
+                console.log('Inputs:', inputs);
+            }
         }
     }
 
@@ -1762,10 +1788,13 @@ $(document).ready(function () {
         }
 
         try {
+            const startTime = performance.now();
             const result = await ruleFlow.evaluate(config, inputs);
-            if (result.success) {
-                showResults(result.results, result.executionTime, true);
-            }
+            const endTime = performance.now();
+            const executionTime = Math.round((endTime - startTime) * 100) / 100;
+            
+           showResults(result.results, executionTime, true);
+            
         } catch (error) {
             debug(`Auto-execution failed: ${error.message}`, 'warning');
         }
@@ -1857,7 +1886,7 @@ $(document).ready(function () {
     /**
      * Show results in panel
      */
-    function showResults(results, executionTime, isAuto = false) {
+   function showResults(results, executionTime, isAuto = false) {
         const $panel = $('#resultsPanel');
         $panel.removeClass('error-panel warning-panel').addClass('result-panel');
 
@@ -1868,13 +1897,27 @@ $(document).ready(function () {
             html += '<p class="text-muted mb-0">No results</p>';
         } else {
             html += '<div class="results-grid">';
+            
+            // แสดงผลปกติ + extract set_vars
             Object.entries(results).forEach(([key, value]) => {
                 html += `
-                   <div class="result-item d-flex justify-content-between">
-                       <span class="fw-semibold">${key}:</span>
-                       <span class="text-primary">${formatValue(value)}</span>
-                   </div>
-               `;
+                <div class="result-item d-flex justify-content-between">
+                    <span class="fw-semibold">${key}:</span>
+                    <span class="text-primary">${formatValue(value)}</span>
+                </div>
+            `;
+            
+            // ถ้ามี set_vars ใน object ให้แสดงแยก
+            if (typeof value === 'object' && value.set_vars) {
+                Object.entries(value.set_vars).forEach(([varKey, varValue]) => {
+                    html += `
+                        <div class="result-item d-flex justify-content-between">
+                            <span class="fw-semibold">${varKey}: <small class="text-muted">(from ${key})</small></span>
+                            <span class="text-primary">${formatValue(varValue)}</span>
+                        </div>
+                    `;
+                });
+            }
             });
             html += '</div>';
         }
@@ -2423,3 +2466,4 @@ $(document).ready(function () {
     setupRealTimeInputHandling();
     updateView();
 });
+
