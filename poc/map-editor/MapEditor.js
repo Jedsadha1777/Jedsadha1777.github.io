@@ -57,20 +57,18 @@ export class MapEditor extends CanvasEngine {
             const selectedIndex = this.objects.getSelected();
             
             if (clickedIndex !== -1) {
-                // Check for resize handle first
                 if (selectedIndex === clickedIndex && this.objects.canResize(clickedIndex)) {
                     const bounds = this.objects.getBounds(clickedIndex);
                     const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
                     
                     if (handle) {
                         this.isResizing = true;
-                        this.resizeHandle = handle;
+                        this.resizeHandle = handle.name;  // ใช้ handle.name
                         this.resizeStartBounds = { ...bounds };
                         return;
                     }
                 }
                 
-                // Start dragging
                 this.objects.selectObject(clickedIndex);
                 this.isDragging = true;
                 this.dragOffsetX = pos.x - this.objects.x[clickedIndex];
@@ -86,13 +84,19 @@ export class MapEditor extends CanvasEngine {
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
+            this.canvas.style.cursor = 'grabbing';
         }
         
         this.render();
     }
 
     handleMouseMove(e, pos) {
+        if (!this.isResizing && !this.isDragging && !this.isDrawing && !this.isPanning) {
+            this.updateCursor(pos);
+        }
+        
         if (this.isResizing) {
+            // existing resize code...
             const selectedIndex = this.objects.getSelected();
             if (selectedIndex !== -1) {
                 const newBounds = this.calculateResize(this.resizeHandle, this.resizeStartBounds, pos);
@@ -149,6 +153,42 @@ export class MapEditor extends CanvasEngine {
             this.render();
         }
     }
+
+    updateCursor(pos) {
+        const selectedIndex = this.objects.getSelected();
+        
+        if (selectedIndex !== -1 && this.objects.canResize(selectedIndex)) {
+            const bounds = this.objects.getBounds(selectedIndex);
+            const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
+            
+            if (handle) {
+                this.canvas.style.cursor = handle.cursor;
+                return;
+            }
+            
+            // เช็คว่าอยู่ใน object หรือไม่
+            if (this.objects.contains(selectedIndex, pos.x, pos.y)) {
+                this.canvas.style.cursor = 'move';
+                return;
+            }
+        }
+        
+        // เช็ค object อื่นๆ
+        const hoveredIndex = this.getObjectAt(pos.x, pos.y);
+        if (hoveredIndex !== -1) {
+            this.canvas.style.cursor = 'pointer';
+        } else {
+            // Default cursor based on tool
+            if (this.currentTool === 'select') {
+                this.canvas.style.cursor = 'default';
+            } else if (this.currentTool === 'pan') {
+                this.canvas.style.cursor = 'grab';
+            } else {
+                this.canvas.style.cursor = 'crosshair';
+            }
+        }
+    }
+
 
     handleMouseUp(e, pos) {
         if (this.isDrawing) {

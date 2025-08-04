@@ -155,27 +155,76 @@ export class CanvasEngine {
     // Resize utilities
     getResizeHandles(bounds) {
         const { x, y, width, height } = bounds;
-        const handleSize = 6 / this.zoom;
+        const handleSize = 10;  
+        const hitArea = 20;    
         
         return {
-            nw: { x: x - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-            ne: { x: x + width - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-            sw: { x: x - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-            se: { x: x + width - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-            n:  { x: x + width/2 - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-            s:  { x: x + width/2 - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-            e:  { x: x + width - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize },
-            w:  { x: x - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize }
+            nw: { 
+                x: x - handleSize/2, y: y - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x - hitArea/2, hitY: y - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'nw-resize'
+            },
+            ne: { 
+                x: x + width - handleSize/2, y: y - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x + width - hitArea/2, hitY: y - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'ne-resize'
+            },
+            sw: { 
+                x: x - handleSize/2, y: y + height - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x - hitArea/2, hitY: y + height - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'sw-resize'
+            },
+            se: { 
+                x: x + width - handleSize/2, y: y + height - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x + width - hitArea/2, hitY: y + height - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'se-resize'
+            },
+            n: { 
+                x: x + width/2 - handleSize/2, y: y - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x + width/2 - hitArea/2, hitY: y - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'n-resize'
+            },
+            s: { 
+                x: x + width/2 - handleSize/2, y: y + height - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x + width/2 - hitArea/2, hitY: y + height - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 's-resize'
+            },
+            e: { 
+                x: x + width - handleSize/2, y: y + height/2 - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x + width - hitArea/2, hitY: y + height/2 - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'e-resize'
+            },
+            w: { 
+                x: x - handleSize/2, y: y + height/2 - handleSize/2, 
+                width: handleSize, height: handleSize,
+                hitX: x - hitArea/2, hitY: y + height/2 - hitArea/2,
+                hitWidth: hitArea, hitHeight: hitArea,
+                cursor: 'w-resize'
+            }
         };
     }
 
     getHandleAtPoint(bounds, px, py) {
-        const handles = this.getResizeHandles(bounds);
-        
+         const handles = this.getResizeHandles(bounds);
+    
         for (const [handleName, handle] of Object.entries(handles)) {
-            if (px >= handle.x && px <= handle.x + handle.width &&
-                py >= handle.y && py <= handle.y + handle.height) {
-                return handleName;
+            if (px >= handle.hitX && px <= handle.hitX + handle.hitWidth &&
+                py >= handle.hitY && py <= handle.hitY + handle.hitHeight) {
+                return { name: handleName, cursor: handle.cursor };
             }
         }
         return null;
@@ -230,16 +279,53 @@ export class CanvasEngine {
     }
 
     drawResizeHandles(bounds) {
-        const handles = this.getResizeHandles(bounds);
+        const screenBounds = {
+            x: (bounds.x * this.zoom) + this.panX,
+            y: (bounds.y * this.zoom) + this.panY,
+            width: bounds.width * this.zoom,
+            height: bounds.height * this.zoom
+        };
         
-        this.ctx.fillStyle = '#0066cc';
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 1 / this.zoom;
+        const handleSize = 10;  // เพิ่มเป็น 10px
         
-        for (const handle of Object.values(handles)) {
-            this.ctx.fillRect(handle.x, handle.y, handle.width, handle.height);
-            this.ctx.strokeRect(handle.x, handle.y, handle.width, handle.height);
+        const handles = [
+            { x: screenBounds.x - handleSize/2, y: screenBounds.y - handleSize/2 },
+            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y - handleSize/2 },
+            { x: screenBounds.x - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
+            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
+            { x: screenBounds.x + screenBounds.width/2 - handleSize/2, y: screenBounds.y - handleSize/2 },
+            { x: screenBounds.x + screenBounds.width/2 - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
+            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y + screenBounds.height/2 - handleSize/2 },
+            { x: screenBounds.x - handleSize/2, y: screenBounds.y + screenBounds.height/2 - handleSize/2 }
+        ];
+        
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
+        // Figma-style handles
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.strokeStyle = '#0066cc';
+        this.ctx.lineWidth = 2;
+        
+        // เพิ่ม shadow เหมือน Figma
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+        this.ctx.shadowBlur = 4;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 2;
+        
+        for (const handle of handles) {
+            // วาดสี่เหลี่ยมสีขาวก่อน
+            this.ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
+            // แล้ววาดขอบสีน้ำเงิน
+            this.ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
         }
+        
+        this.ctx.shadowColor = 'transparent';
+        this.ctx.shadowBlur = 0;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        
+        this.ctx.restore();
     }
 
     drawGrid() {
