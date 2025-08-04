@@ -12,6 +12,11 @@ export class MapEditor extends CanvasEngine {
         this.dirtyManager = new DirtyRectManager();
         this.currentTool = 'select';
         
+        // เพิ่ม cache สำหรับ handle detection
+        this.lastMousePos = null;
+        this.hoveredHandle = null;
+        this.hoveredObject = -1;
+        
         this.setupMapEventListeners();
         this.setupUI();
         this.init();
@@ -91,12 +96,15 @@ export class MapEditor extends CanvasEngine {
     }
 
     handleMouseMove(e, pos) {
+        // Cache mouse position
+        this.lastMousePos = pos;
+        
+        // Update UI state ก่อน
         if (!this.isResizing && !this.isDragging && !this.isDrawing && !this.isPanning) {
-            this.updateCursor(pos);
+            this.updateHoverState(pos);
         }
         
         if (this.isResizing) {
-            // existing resize code...
             const selectedIndex = this.objects.getSelected();
             if (selectedIndex !== -1) {
                 const newBounds = this.calculateResize(this.resizeHandle, this.resizeStartBounds, pos);
@@ -154,53 +162,108 @@ export class MapEditor extends CanvasEngine {
         }
     }
 
-    updateCursor(pos) {
+
+    // แยก hover state detection ออกมา
+    updateHoverState(pos) {
         const selectedIndex = this.objects.getSelected();
         
+        // Reset state
+        this.hoveredHandle = null;
+        this.hoveredObject = -1;
+        
+        // เช็ค resize handles ก่อน (สำคัญที่สุด)
         if (selectedIndex !== -1 && this.objects.canResize(selectedIndex)) {
             const bounds = this.objects.getBounds(selectedIndex);
-            const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
+            this.hoveredHandle = this.getHandleAtPoint(bounds, pos.x, pos.y);
             
-            if (handle) {
-                this.canvas.style.cursor = handle.cursor;
+            if (this.hoveredHandle) {
+                this.canvas.style.cursor = this.hoveredHandle.cursor;
                 return;
             }
             
-            // เช็คว่าอยู่ใน object หรือไม่
+            // เช็คว่าอยู่ในตัว selected object หรือไม่
             if (this.objects.contains(selectedIndex, pos.x, pos.y)) {
+                this.hoveredObject = selectedIndex;
                 this.canvas.style.cursor = 'move';
                 return;
             }
         }
         
-        // เช็ค object อื่นๆ
-        const hoveredIndex = this.getObjectAt(pos.x, pos.y);
-        if (hoveredIndex !== -1) {
+        // เช็ค objects อื่นๆ
+        this.hoveredObject = this.getObjectAt(pos.x, pos.y);
+        if (this.hoveredObject !== -1) {
             this.canvas.style.cursor = 'pointer';
         } else {
-            // Default cursor based on tool
-            if (this.currentTool === 'select') {
-                this.canvas.style.cursor = 'default';
-            } else if (this.currentTool === 'pan') {
-                this.canvas.style.cursor = 'grab';
-            } else {
-                this.canvas.style.cursor = 'crosshair';
-            }
+            this.setDefaultCursor();
         }
     }
 
+    setDefaultCursor() {
+        if (this.currentTool === 'select') {
+            this.canvas.style.cursor = 'default';
+        } else if (this.currentTool === 'pan') {
+            this.canvas.style.cursor = 'grab';
+        } else {
+            this.canvas.style.cursor = 'crosshair';
+        }
+    }
+
+    handleMouseDown(e, pos) {
+        if (this.currentTool === 'select') {
+            const selectedIndex = this.objects.getSelected();
+            
+            // ใช้ cached hover state แทนการ detect ใหม่
+            if (this.hoveredHandle) {
+                this.isResizing = true;
+                this.resizeHandle = this.hoveredHandle.name;
+                this.resizeStartBounds = { ...this.objects.getBounds(selectedIndex) };
+                this.canvas.style.cursor = this.hoveredHandle.cursor;
+                return;
+            }
+            
+            // ถ้าคลิกใน selected object
+            if (this.hoveredObject === selectedIndex) {
+                this.isDragging = true;
+                this.dragOffsetX = pos.x - this.objects.x[selectedIndex];
+                this.dragOffsetY = pos.y - this.objects.y[selectedIndex];
+                this.canvas.style.cursor = 'move';
+                return;
+            }
+            
+            // คลิก object อื่น
+            if (this.hoveredObject !== -1) {
+                this.objects.selectObject(this.hoveredObject);
+                this.isDragging = true;
+                this.dragOffsetX = pos.x - this.objects.x[this.hoveredObject];
+                this.dragOffsetY = pos.y - this.objects.y[this.hoveredObject];
+                this.canvas.style.cursor = 'move';
+            } else {
+                // คลิกที่ว่าง
+                this.objects.selectObject(-1);
+            }
+            
+        } else if (this.isDrawingTool(this.currentTool)) {
+            this.isDrawing = true;
+            
+        } else if (this.currentTool === 'pan') {
+            this.isPanning = true;
+            this.lastPanX = e.clientX;
+            this.lastPanY = e.clientY;
+            this.canvas.style.cursor = 'grabbing';
+        }
+        
+        this.render();
+    }
 
     handleMouseUp(e, pos) {
         if (this.isDrawing) {
             if (this.currentTool === 'waypoint') {
-                // Single click waypoint
                 const snapped = this.snapPosition(pos.x, pos.y);
                 const { index } = this.objects.createObject('circle', snapped.x - 8, snapped.y - 8, 16, 16, '#e74c3c', 'waypoint');
                 this.spatialGrid.addObject(index, snapped.x - 8, snapped.y - 8, 16, 16);
                 this.objects.selectObject(index);
                 
             } else {
-                // Drag to create
                 const width = pos.x - this.startX;
                 const height = pos.y - this.startY;
                 
@@ -227,7 +290,13 @@ export class MapEditor extends CanvasEngine {
             }
             this.updateInfo();
         }
+        
+        // ถ้าเพิ่งเสร็จสิ้น interaction ให้ update hover state ใหม่
+        if (this.lastMousePos && !this.isResizing && !this.isDragging && !this.isDrawing && !this.isPanning) {
+            this.updateHoverState(this.lastMousePos);
+        }
     }
+
 
     isDrawingTool(tool) {
         return ['rectangle', 'circle', 'wall', 'corridor', 'room', 'waypoint'].includes(tool);
