@@ -1,281 +1,505 @@
 /**
  * RuleFlow Core - FunctionRegistry
- * Ported from TypeScript with all built-in functions
+ * Complete 1:1 match with TypeScript version
  */
 
 class FunctionRegistry {
     constructor() {
         this.functions = new Map();
-        this.initializeBuiltInFunctions();
+        this.functionInfo = new Map();
+        this.registerBuiltInFunctions();
     }
 
+    // ====================================
+    // CORE API METHODS (1:1 Match with TypeScript)
+    // ====================================
+
     /**
-     * Register a new function
+     * Register a new function with TypeScript-compatible metadata
      */
-    register(name, func, metadata = {}) {
-        if (typeof func !== 'function') {
+    register(name, handler, info = {}) {
+        if (typeof handler !== 'function') {
             throw new RuleFlowException(`Function '${name}' must be a function`);
         }
 
-        this.functions.set(name, {
-            func,
-            metadata: {
-                category: metadata.category || 'Custom',
-                description: metadata.description || '',
-                params: metadata.params || [],
-                returns: metadata.returns || 'any',
-                examples: metadata.examples || []
-            }
-        });
+        this.functions.set(name, handler);
+        
+        if (info) {
+            this.functionInfo.set(name, {
+                name,
+                category: info.category || 'Custom',
+                description: info.description,
+                parameters: info.parameters,
+                returnType: info.returnType
+            });
+        }
     }
 
     /**
-     * Call a registered function
+     * Call a registered function - exact TypeScript match
      */
     call(name, args = []) {
-        if (!this.functions.has(name)) {
-            throw new RuleFlowException(`Function '${name}' is not registered`);
+        const handler = this.functions.get(name);
+        
+        if (!handler) {
+            throw new RuleFlowException(`Unknown function: ${name}. Available functions: ${Array.from(this.functions.keys()).join(', ')}`);
         }
 
-        const { func } = this.functions.get(name);
-        
         try {
-            return func.apply(null, args);
+            return handler(...args);
         } catch (error) {
             throw new RuleFlowException(`Error calling function '${name}': ${error.message}`);
         }
     }
 
     /**
-     * Check if function exists
+     * Get available functions - TypeScript method name
      */
-    has(name) {
-        return this.functions.has(name);
-    }
-
-    /**
-     * Get function metadata
-     */
-    getMetadata(name) {
-        if (!this.functions.has(name)) {
-            return null;
-        }
-        return this.functions.get(name).metadata;
-    }
-
-    /**
-     * Get all registered function names
-     */
-    getFunctionNames() {
+    getAvailableFunctions() {
         return Array.from(this.functions.keys());
     }
 
     /**
-     * Get functions by category
+     * Get functions by category - TypeScript return format
      */
-    getFunctionsByCategory(category) {
-        const result = {};
-        for (const [name, { metadata }] of this.functions) {
-            if (metadata.category === category) {
-                result[name] = metadata;
+    getFunctionsByCategory() {
+        const categories = {
+            Math: [],
+            Statistics: [],
+            Business: [],
+            Utility: []
+        };
+
+        for (const [name, info] of this.functionInfo.entries()) {
+            const category = info.category || 'Utility';
+            if (!categories[category]) {
+                categories[category] = [];
             }
+            categories[category].push(name);
         }
-        return result;
+
+        return categories;
     }
 
     /**
-     * Initialize all built-in functions
+     * Get function info - TypeScript method name
      */
-    initializeBuiltInFunctions() {
-        // Math Functions
-        this.register('sqrt', Math.sqrt, {
-            category: 'Math',
-            description: 'Square root of a number',
-            params: ['number'],
-            returns: 'number',
-            examples: ['sqrt(16) = 4']
-        });
+    getFunctionInfo(name) {
+        return this.functionInfo.get(name);
+    }
 
-        this.register('pow', Math.pow, {
-            category: 'Math',
-            description: 'Raise number to power',
-            params: ['base', 'exponent'],
-            returns: 'number',
-            examples: ['pow(2, 3) = 8']
-        });
+    /**
+     * Check if function exists - TypeScript method name
+     */
+    hasFunction(name) {
+        return this.functions.has(name);
+    }
 
-        this.register('abs', Math.abs, {
+    /**
+     * List all functions with metadata - TypeScript method
+     */
+    listFunctions() {
+        const functions = [];
+        
+        for (const [name] of this.functions.entries()) {
+            const info = this.functionInfo.get(name);
+            functions.push({
+                name,
+                category: info?.category,
+                description: info?.description
+            });
+        }
+        
+        return functions;
+    }
+
+    /**
+     * Unregister a function - TypeScript method
+     */
+    unregister(name) {
+        const removed = this.functions.delete(name);
+        this.functionInfo.delete(name);
+        return removed;
+    }
+
+    // ====================================
+    // LEGACY COMPATIBILITY METHODS
+    // ====================================
+
+    getFunctionNames() {
+        return this.getAvailableFunctions();
+    }
+
+    has(name) {
+        return this.hasFunction(name);
+    }
+
+    getMetadata(name) {
+        return this.getFunctionInfo(name);
+    }
+
+    // ====================================
+    // BUILT-IN FUNCTION REGISTRATION
+    // ====================================
+
+    registerBuiltInFunctions() {
+        this.registerMathFunctions();
+        this.registerStatisticsFunctions();
+        this.registerBusinessFunctions();
+        this.registerUtilityFunctions();
+    }
+
+    // ====================================
+    // MATH FUNCTIONS (Enhanced - matches TypeScript)
+    // ====================================
+    registerMathFunctions() {
+        // Basic math operations
+        this.register('abs', (x) => Math.abs(x), {
             category: 'Math',
             description: 'Absolute value',
-            params: ['number'],
-            returns: 'number',
-            examples: ['abs(-5) = 5']
+            parameters: ['number'],
+            returnType: 'number'
         });
 
-        this.register('min', Math.min, {
+        this.register('min', (...args) => Math.min(...args), {
             category: 'Math',
-            description: 'Minimum of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['min(1, 2, 3) = 1']
+            description: 'Minimum value',
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('max', Math.max, {
+        this.register('max', (...args) => Math.max(...args), {
             category: 'Math',
-            description: 'Maximum of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['max(1, 2, 3) = 3']
+            description: 'Maximum value',
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('round', (num, decimals = 0) => {
-            const factor = Math.pow(10, decimals);
-            return Math.round(num * factor) / factor;
+        this.register('sqrt', (x) => {
+            if (x < 0) {
+                throw new Error(`Cannot calculate square root of negative number: ${x}`);
+            }
+            return Math.sqrt(x);
         }, {
             category: 'Math',
-            description: 'Round number to specified decimals',
-            params: ['number', 'decimals'],
-            returns: 'number',
-            examples: ['round(3.14159, 2) = 3.14']
+            description: 'Square root',
+            parameters: ['number'],
+            returnType: 'number'
         });
 
-        this.register('ceil', Math.ceil, {
+        // Rounding functions
+        this.register('round', (x, precision = 0) => {
+            const factor = Math.pow(10, precision);
+            return Math.round(x * factor) / factor;
+        }, {
             category: 'Math',
-            description: 'Round up to nearest integer',
-            params: ['number'],
-            returns: 'number',
-            examples: ['ceil(3.2) = 4']
+            description: 'Round to precision',
+            parameters: ['number', 'precision?'],
+            returnType: 'number'
         });
 
-        this.register('floor', Math.floor, {
+        this.register('ceil', (x) => Math.ceil(x), {
             category: 'Math',
-            description: 'Round down to nearest integer',
-            params: ['number'],
-            returns: 'number',
-            examples: ['floor(3.8) = 3']
+            description: 'Round up',
+            parameters: ['number'],
+            returnType: 'number'
         });
 
-        // Statistics Functions
-        this.register('avg', (...numbers) => {
-            if (numbers.length === 0) return 0;
-            return numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        this.register('floor', (x) => Math.floor(x), {
+            category: 'Math',
+            description: 'Round down',
+            parameters: ['number'],
+            returnType: 'number'
+        });
+
+        this.register('pow', (x, y) => Math.pow(x, y), {
+            category: 'Math',
+            description: 'Power function',
+            parameters: ['base', 'exponent'],
+            returnType: 'number'
+        });
+
+        // Logarithmic and exponential functions
+        this.register('log', (x, base = Math.E) => {
+            if (x <= 0) {
+                throw new Error(`Cannot calculate logarithm of non-positive number: ${x}`);
+            }
+            if (base <= 0 || base === 1) {
+                throw new Error(`Invalid logarithm base: ${base}`);
+            }
+            return Math.log(x) / Math.log(base);
+        }, {
+            category: 'Math',
+            description: 'Logarithm with optional base',
+            parameters: ['number', 'base?'],
+            returnType: 'number'
+        });
+
+        this.register('exp', (x) => Math.exp(x), {
+            category: 'Math',
+            description: 'Exponential function (e^x)',
+            parameters: ['number'],
+            returnType: 'number'
+        });
+
+        // Trigonometric functions
+        this.register('sin', (x) => Math.sin(x), {
+            category: 'Math',
+            description: 'Sine function (radians)',
+            parameters: ['radians'],
+            returnType: 'number'
+        });
+
+        this.register('cos', (x) => Math.cos(x), {
+            category: 'Math',
+            description: 'Cosine function (radians)',
+            parameters: ['radians'],
+            returnType: 'number'
+        });
+
+        this.register('tan', (x) => Math.tan(x), {
+            category: 'Math',
+            description: 'Tangent function (radians)',
+            parameters: ['radians'],
+            returnType: 'number'
+        });
+    }
+
+    // ====================================
+    // STATISTICS FUNCTIONS (matches TypeScript)
+    // ====================================
+    registerStatisticsFunctions() {
+        this.register('avg', (...args) => {
+            if (args.length === 0) return 0;
+            return args.reduce((sum, x) => sum + x, 0) / args.length;
         }, {
             category: 'Statistics',
             description: 'Average of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['avg(1, 2, 3) = 2']
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('sum', (...numbers) => {
-            return numbers.reduce((a, b) => a + b, 0);
+        this.register('sum', (...args) => {
+            return args.reduce((sum, x) => sum + x, 0);
         }, {
             category: 'Statistics',
             description: 'Sum of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['sum(1, 2, 3) = 6']
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('count', (...items) => {
-            return items.length;
+        this.register('count', (...args) => {
+            return args.length;
         }, {
             category: 'Statistics',
-            description: 'Count of items',
-            params: ['...items'],
-            returns: 'number',
-            examples: ['count(1, 2, 3) = 3']
+            description: 'Count of values',
+            parameters: ['...values'],
+            returnType: 'number'
         });
 
-        this.register('median', (...numbers) => {
-            const sorted = numbers.slice().sort((a, b) => a - b);
-            const middle = Math.floor(sorted.length / 2);
-            
-            if (sorted.length % 2 === 0) {
-                return (sorted[middle - 1] + sorted[middle]) / 2;
-            } else {
-                return sorted[middle];
-            }
+        this.register('median', (...args) => {
+            if (args.length === 0) return 0;
+            const sorted = [...args].sort((a, b) => a - b);
+            const mid = Math.floor(sorted.length / 2);
+
+            return sorted.length % 2 !== 0
+                ? sorted[mid]
+                : (sorted[mid - 1] + sorted[mid]) / 2;
         }, {
             category: 'Statistics',
-            description: 'Median of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['median(1, 2, 3) = 2']
+            description: 'Median value',
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('variance', (...numbers) => {
-            if (numbers.length === 0) return 0;
-            const mean = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-            const squaredDiffs = numbers.map(num => Math.pow(num - mean, 2));
-            return squaredDiffs.reduce((a, b) => a + b, 0) / numbers.length;
+        this.register('variance', (...args) => {
+            if (args.length === 0) return 0;
+            const mean = args.reduce((sum, x) => sum + x, 0) / args.length;
+            const squaredDiffs = args.map(x => Math.pow(x - mean, 2));
+            return squaredDiffs.reduce((sum, x) => sum + x, 0) / args.length;
         }, {
             category: 'Statistics',
-            description: 'Variance of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['variance(1, 2, 3) = 0.67']
+            description: 'Variance',
+            parameters: ['...numbers'],
+            returnType: 'number'
         });
 
-        this.register('stddev', (...numbers) => {
-            const variance = this.call('variance', numbers);
+        this.register('stddev', (...args) => {
+            if (args.length === 0) return 0;
+            const mean = args.reduce((sum, x) => sum + x, 0) / args.length;
+            const squaredDiffs = args.map(x => Math.pow(x - mean, 2));
+            const variance = squaredDiffs.reduce((sum, x) => sum + x, 0) / args.length;
             return Math.sqrt(variance);
         }, {
             category: 'Statistics',
-            description: 'Standard deviation of numbers',
-            params: ['...numbers'],
-            returns: 'number',
-            examples: ['stddev(1, 2, 3) = 0.82']
+            description: 'Standard deviation',
+            parameters: ['...numbers'],
+            returnType: 'number'
+        });
+    }
+
+    // ====================================
+    // BUSINESS FUNCTIONS (matches TypeScript)
+    // ====================================
+    registerBusinessFunctions() {
+        // Fixed percentage function (matches TypeScript exactly)
+        this.register('percentage', (value, percent) => {
+            return (value * percent) / 100;
+        }, {
+            category: 'Business',
+            description: 'Calculate percentage amount of value',
+            parameters: ['value', 'percent'],
+            returnType: 'number'
         });
 
-        // Business Functions
-        this.register('percentage', (value, total) => {
+        this.register('percentage_of', (part, total) => {
             if (total === 0) return 0;
-            return (value / total) * 100;
+            return (part / total) * 100;
         }, {
             category: 'Business',
-            description: 'Calculate percentage',
-            params: ['value', 'total'],
-            returns: 'number',
-            examples: ['percentage(50, 200) = 25']
+            description: 'Calculate what percentage part is of total',
+            parameters: ['part', 'total'],
+            returnType: 'number'
         });
 
-        this.register('discount', (price, rate) => {
-            return price * (1 - rate / 100);
+        this.register('compound_interest', (principal, rate, time, frequency = 1) => {
+            if (principal < 0 || rate < 0 || time < 0) {
+                throw new Error('Principal, rate, and time must be non-negative');
+            }
+            if (rate === 0) return principal;
+            return principal * Math.pow(1 + rate / frequency, frequency * time);
         }, {
             category: 'Business',
-            description: 'Apply discount to price',
-            params: ['price', 'discount_rate'],
-            returns: 'number',
-            examples: ['discount(100, 10) = 90']
+            description: 'Compound interest calculation',
+            parameters: ['principal', 'rate', 'time', 'frequency?'],
+            returnType: 'number'
         });
 
-        this.register('compound_interest', (principal, rate, time, compounding = 1) => {
-            return principal * Math.pow(1 + rate / (100 * compounding), compounding * time);
+        this.register('simple_interest', (principal, rate, time) => {
+            if (principal < 0 || rate < 0 || time < 0) {
+                throw new Error('Principal, rate, and time must be non-negative');
+            }
+            return principal * (1 + rate * time);
         }, {
             category: 'Business',
-            description: 'Calculate compound interest',
-            params: ['principal', 'annual_rate', 'years', 'compounding_periods'],
-            returns: 'number',
-            examples: ['compound_interest(1000, 5, 2) = 1102.50']
+            description: 'Simple interest calculation',
+            parameters: ['principal', 'rate', 'time'],
+            returnType: 'number'
         });
 
+        this.register('discount', (originalPrice, discountPercent) => {
+            if (discountPercent < 0 || discountPercent > 100) {
+                throw new Error('Discount percentage must be between 0 and 100');
+            }
+            return originalPrice * (1 - discountPercent / 100);
+        }, {
+            category: 'Business',
+            description: 'Apply discount percentage to price',
+            parameters: ['originalPrice', 'discountPercent'],
+            returnType: 'number'
+        });
+
+        this.register('markup', (cost, markupPercent) => {
+            if (markupPercent < 0) {
+                throw new Error('Markup percentage must be non-negative');
+            }
+            return cost * (1 + markupPercent / 100);
+        }, {
+            category: 'Business',
+            description: 'Apply markup percentage to cost',
+            parameters: ['cost', 'markupPercent'],
+            returnType: 'number'
+        });
+
+        // PMT (Payment) function for loan calculations - matches TypeScript
+        this.register('pmt', (principal, rate, nper) => {
+            if (principal <= 0 || rate < 0 || nper <= 0) {
+                throw new Error('Invalid loan parameters: principal > 0, rate >= 0, nper > 0');
+            }
+            if (rate === 0) {
+                return principal / nper;
+            }
+            return principal * (rate * Math.pow(1 + rate, nper)) / (Math.pow(1 + rate, nper) - 1);
+        }, {
+            category: 'Business',
+            description: 'Calculate loan payment amount',
+            parameters: ['principal', 'monthlyRate', 'numberOfPayments'],
+            returnType: 'number'
+        });
+    }
+
+    // ====================================
+    // UTILITY FUNCTIONS (matches TypeScript)
+    // ====================================
+    registerUtilityFunctions() {
+        this.register('clamp', (value, min, max) => {
+            return Math.min(Math.max(value, min), max);
+        }, {
+            category: 'Utility',
+            description: 'Clamp value between min and max',
+            parameters: ['value', 'min', 'max'],
+            returnType: 'number'
+        });
+
+        this.register('normalize', (value, min, max) => {
+            if (max === min) return 0;
+            return (value - min) / (max - min);
+        }, {
+            category: 'Utility',
+            description: 'Normalize value to 0-1 range',
+            parameters: ['value', 'min', 'max'],
+            returnType: 'number'
+        });
+
+        this.register('coalesce', (...args) => {
+            for (const arg of args) {
+                if (arg !== null && arg !== undefined) {
+                    return arg;
+                }
+            }
+            return null;
+        }, {
+            category: 'Utility',
+            description: 'Return first non-null value',
+            parameters: ['...values'],
+            returnType: 'any'
+        });
+
+        this.register('if_null', (value, defaultValue) => {
+            return (value === null || value === undefined) ? defaultValue : value;
+        }, {
+            category: 'Utility',
+            description: 'Return default if value is null/undefined',
+            parameters: ['value', 'default'],
+            returnType: 'any'
+        });
+
+        // BMI and Age functions (moved to Utility category to match TypeScript)
         this.register('bmi', (weight, height) => {
+            if (weight <= 0 || height <= 0) {
+                throw new Error('Weight and height must be positive');
+            }
             // Height in cm, convert to meters
             const heightInMeters = height / 100;
             return weight / (heightInMeters * heightInMeters);
         }, {
-            category: 'Health',
+            category: 'Utility',
             description: 'Calculate BMI',
-            params: ['weight_kg', 'height_cm'],
-            returns: 'number',
-            examples: ['bmi(70, 175) = 22.86']
+            parameters: ['weight_kg', 'height_cm'],
+            returnType: 'number'
         });
 
         this.register('age', (birthDate, referenceDate = null) => {
             const birth = new Date(birthDate);
             const reference = referenceDate ? new Date(referenceDate) : new Date();
             
+            if (isNaN(birth.getTime())) {
+                throw new Error('Invalid birth date');
+            }
+            if (referenceDate && isNaN(reference.getTime())) {
+                throw new Error('Invalid reference date');
+            }
+
             let age = reference.getFullYear() - birth.getFullYear();
             const monthDiff = reference.getMonth() - birth.getMonth();
             
@@ -287,139 +511,8 @@ class FunctionRegistry {
         }, {
             category: 'Utility',
             description: 'Calculate age from birth date',
-            params: ['birth_date', 'reference_date'],
-            returns: 'number',
-            examples: ['age("1990-01-01") = 34']
-        });
-
-        // String Functions
-        this.register('concat', (...strings) => {
-            return strings.join('');
-        }, {
-            category: 'String',
-            description: 'Concatenate strings',
-            params: ['...strings'],
-            returns: 'string',
-            examples: ['concat("Hello", " ", "World") = "Hello World"']
-        });
-
-        this.register('length', (str) => {
-            return String(str).length;
-        }, {
-            category: 'String',
-            description: 'Get string length',
-            params: ['string'],
-            returns: 'number',
-            examples: ['length("Hello") = 5']
-        });
-
-        this.register('upper', (str) => {
-            return String(str).toUpperCase();
-        }, {
-            category: 'String',
-            description: 'Convert to uppercase',
-            params: ['string'],
-            returns: 'string',
-            examples: ['upper("hello") = "HELLO"']
-        });
-
-        this.register('lower', (str) => {
-            return String(str).toLowerCase();
-        }, {
-            category: 'String',
-            description: 'Convert to lowercase',
-            params: ['string'],
-            returns: 'string',
-            examples: ['lower("HELLO") = "hello"']
-        });
-
-        // Date Functions
-        this.register('now', () => {
-            return new Date().toISOString();
-        }, {
-            category: 'Date',
-            description: 'Current date/time',
-            params: [],
-            returns: 'string',
-            examples: ['now() = "2024-01-01T12:00:00.000Z"']
-        });
-
-        this.register('year', (date = null) => {
-            const d = date ? new Date(date) : new Date();
-            return d.getFullYear();
-        }, {
-            category: 'Date',
-            description: 'Get year from date',
-            params: ['date'],
-            returns: 'number',
-            examples: ['year("2024-01-01") = 2024']
-        });
-
-        this.register('month', (date = null) => {
-            const d = date ? new Date(date) : new Date();
-            return d.getMonth() + 1; // JavaScript months are 0-based
-        }, {
-            category: 'Date',
-            description: 'Get month from date',
-            params: ['date'],
-            returns: 'number',
-            examples: ['month("2024-01-01") = 1']
-        });
-
-        this.register('day', (date = null) => {
-            const d = date ? new Date(date) : new Date();
-            return d.getDate();
-        }, {
-            category: 'Date',
-            description: 'Get day from date',
-            params: ['date'],
-            returns: 'number',
-            examples: ['day("2024-01-01") = 1']
-        });
-
-        // Conditional Functions
-        this.register('if', (condition, trueValue, falseValue) => {
-            return condition ? trueValue : falseValue;
-        }, {
-            category: 'Logic',
-            description: 'Conditional value selection',
-            params: ['condition', 'true_value', 'false_value'],
-            returns: 'any',
-            examples: ['if(true, "yes", "no") = "yes"']
-        });
-
-        // Validation Functions
-        this.register('isNull', (value) => {
-            return value === null || value === undefined;
-        }, {
-            category: 'Validation',
-            description: 'Check if value is null/undefined',
-            params: ['value'],
-            returns: 'boolean',
-            examples: ['isNull(null) = true']
-        });
-
-        this.register('isEmpty', (value) => {
-            if (value === null || value === undefined) return true;
-            if (typeof value === 'string') return value.trim() === '';
-            if (Array.isArray(value)) return value.length === 0;
-            return false;
-        }, {
-            category: 'Validation',
-            description: 'Check if value is empty',
-            params: ['value'],
-            returns: 'boolean',
-            examples: ['isEmpty("") = true']
-        });
-
-        this.register('isNumber', (value) => {
-            return !isNaN(value) && !isNaN(parseFloat(value));
-        }, {
-            category: 'Validation',
-            description: 'Check if value is a number',
-            params: ['value'],
-            returns: 'boolean',
-            examples: ['isNumber("123") = true']
+            parameters: ['birth_date', 'reference_date?'],
+            returnType: 'number'
         });
     }
 }

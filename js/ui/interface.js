@@ -203,31 +203,31 @@ const RuleFlowUI = {
     /**
      * Render input variables in UI
      */
-    renderInputVariables(inputs) {
-        const $container = $('#inputVariables');
+    // renderInputVariables(inputs) {
+    //     const $container = $('#inputVariables');
         
-        if (inputs.length === 0) {
-            $container.html('<p class="text-muted mb-0">Add components to see input variables</p>');
-            return;
-        }
+    //     if (inputs.length === 0) {
+    //         $container.html('<p class="text-muted mb-0">Add components to see input variables</p>');
+    //         return;
+    //     }
         
-        $container.empty();
+    //     $container.empty();
         
-        inputs.forEach(input => {
-            const $inputDiv = $(`
-                <div class="input-variable mb-2" data-input="${input}">
-                    <label class="form-label small">${input}</label>
-                    <input type="number" 
-                           class="form-control form-control-sm" 
-                           id="input_${input}" 
-                           placeholder="Enter ${input}"
-                           step="any">
-                </div>
-            `);
+    //     inputs.forEach(input => {
+    //         const $inputDiv = $(`
+    //             <div class="input-variable mb-2" data-input="${input}">
+    //                 <label class="form-label small">${input}</label>
+    //                 <input type="number" 
+    //                        class="form-control form-control-sm" 
+    //                        id="input_${input}" 
+    //                        placeholder="Enter ${input}"
+    //                        step="any">
+    //             </div>
+    //         `);
             
-            $container.append($inputDiv);
-        });
-    },
+    //         $container.append($inputDiv);
+    //     });
+    // },
 
     /**
      * Get current configuration from components

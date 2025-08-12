@@ -1,6 +1,6 @@
 /**
  * RuleFlow Core - FormulaProcessor
- * Complete implementation matching TypeScript and PHP versions
+ * Complete 1:1 match with TypeScript version
  */
 
 class FormulaProcessor {
@@ -9,8 +9,12 @@ class FormulaProcessor {
         this.evaluator = new ExpressionEvaluator(this.functionRegistry);
     }
 
+    // ====================================
+    // MAIN PROCESSING METHOD
+    // ====================================
+
     /**
-     * Process array of formulas - ตาม TypeScript/PHP versions
+     * Process array of formulas - matches TypeScript exactly
      */
     process(formulas, inputs) {
         const context = { ...inputs };
@@ -21,8 +25,6 @@ class FormulaProcessor {
                     this.processFormula(formula, context);
                 } else if (formula.switch) {
                     this.processSwitch(formula, context);
-                } else if (formula.conditions) {
-                    this.processConditions(formula, context);
                 } else if (formula.function_call) {
                     this.processFunctionCall(formula, context);
                 } else if (formula.rules) {
@@ -30,7 +32,7 @@ class FormulaProcessor {
                 } else if (formula.scoring) {
                     this.processAdvancedScoring(formula, context);
                 } else {
-                    throw new RuleFlowException(`Formula '${formula.id}' must have formula, switch, conditions, function_call, rules, or scoring`);
+                    throw new RuleFlowException(`Formula '${formula.id}' must have formula, switch, function_call, rules, or scoring`);
                 }
             } catch (error) {
                 throw new RuleFlowException(`Error processing formula '${formula.id}': ${error.message}`);
@@ -39,6 +41,10 @@ class FormulaProcessor {
 
         return context;
     }
+
+    // ====================================
+    // FORMULA PROCESSING METHODS
+    // ====================================
 
     /**
      * Process mathematical formula
@@ -68,7 +74,7 @@ class FormulaProcessor {
     }
 
     /**
-     * Process switch logic
+     * Process switch logic - matches TypeScript exactly
      */
     processSwitch(formula, context) {
         const switchVariable = formula.switch;
@@ -98,6 +104,14 @@ class FormulaProcessor {
                         const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
                         context[varName] = result;
                     }
+
+                    // Set additional variables if specified
+                    if (whenClause.set_vars) {
+                        for (const [varKey, varValue] of Object.entries(whenClause.set_vars)) {
+                            const finalVarName = varKey.startsWith('$') ? varKey.substring(1) : varKey;
+                            context[finalVarName] = this.resolveValue(varValue, context);
+                        }
+                    }
                     return;
                 }
             }
@@ -112,40 +126,19 @@ class FormulaProcessor {
                 const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
                 context[varName] = result;
             }
-        }
-    }
 
-    /**
-     * Process conditions (array-based format)
-     */
-    processConditions(formula, context) {
-        for (const conditionClause of formula.conditions) {
-            if (this.evaluateCondition(conditionClause.condition, null, context)) {
-                const result = this.resolveValue(conditionClause.value, context);
-                context[formula.id] = result;
-                
-                if (formula.as) {
-                    const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
-                    context[varName] = result;
+            // Set additional variables for default case
+            if (formula.set_vars) {
+                for (const [varKey, varValue] of Object.entries(formula.set_vars)) {
+                    const finalVarName = varKey.startsWith('$') ? varKey.substring(1) : varKey;
+                    context[finalVarName] = this.resolveValue(varValue, context);
                 }
-                return;
-            }
-        }
-        
-        // Use default if provided
-        if (formula.default !== undefined) {
-            const result = this.resolveValue(formula.default, context);
-            context[formula.id] = result;
-            
-            if (formula.as) {
-                const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
-                context[varName] = result;
             }
         }
     }
 
     /**
-     * Process function call - ตาม TypeScript/PHP versions
+     * Process function call - NEW method to match TypeScript
      */
     processFunctionCall(formula, context) {
         if (!formula.function_call) {
@@ -173,10 +166,11 @@ class FormulaProcessor {
                     return context[param];
                 }
 
-                // Handle expressions
+                // Handle nested function calls or expressions
                 if (param.includes('(') || param.includes('+') || param.includes('-') || param.includes('*') || param.includes('/')) {
                     try {
-                        return this.evaluator.safeEval(param, context);
+                        this.evaluator.setVariables(context);
+                        return this.evaluator.evaluate(param);
                     } catch (error) {
                         throw new RuleFlowException(`Cannot evaluate parameter '${param}': ${error.message}`);
                     }
@@ -190,22 +184,25 @@ class FormulaProcessor {
         try {
             const result = this.functionRegistry.call(functionName, resolvedParams);
             
-            // Round result if numeric
-            const finalResult = typeof result === 'number' ? Math.round(result * 1000) / 1000 : result;
+            // Round numeric results
+            const roundedResult = typeof result === 'number' ? 
+                Math.round(result * 1000000) / 1000000 : result;
 
-            context[formula.id] = finalResult;
+            context[formula.id] = roundedResult;
 
+            // Store as variable if specified
             if (formula.as) {
                 const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
-                context[varName] = finalResult;
+                context[varName] = roundedResult;
             }
+
         } catch (error) {
-            throw new RuleFlowException(`Function call failed for '${functionName}': ${error.message}`);
+            throw new RuleFlowException(`Function call '${functionName}' failed: ${error.message}`);
         }
     }
 
     /**
-     * Process accumulative scoring (rules) - ตาม PHP version
+     * Process accumulative scoring - NEW method to match TypeScript
      */
     processAccumulativeScoring(formula, context) {
         let totalScore = 0.0;
@@ -249,7 +246,7 @@ class FormulaProcessor {
     }
 
     /**
-     * Process advanced scoring (scoring) - ตาม PHP version
+     * Process advanced scoring - NEW method to match TypeScript
      */
     processAdvancedScoring(formula, context) {
         if (formula.scoring.ifs) {
@@ -264,15 +261,13 @@ class FormulaProcessor {
             throw new RuleFlowException("Invalid scoring structure");
         }
 
+        // Store as variable if specified
         if (formula.as) {
             const varName = formula.as.startsWith('$') ? formula.as.substring(1) : formula.as;
             context[varName] = context[formula.id];
         }
     }
 
-    /**
-     * Process multi-condition scoring
-     */
     processMultiConditionScoring(scoringIfs, context) {
         const vars = scoringIfs.vars || [];
         const tree = scoringIfs.tree || [];
@@ -283,143 +278,210 @@ class FormulaProcessor {
             return context[cleanVarName];
         });
 
+        // Check if any values are missing
+        if (values.some(val => val === undefined || val === null)) {
+            return this.createDefaultScoringResult();
+        }
+
         // Process scoring tree
         for (const branch of tree) {
             if (this.evaluateCondition(branch.if, values[0], context)) {
-                if (branch.ranges) {
+                if (branch.ranges && values.length > 1) {
                     for (const range of branch.ranges) {
                         if (this.evaluateCondition(range.if, values[1], context)) {
-                            return {
-                                score: range.score || 0,
-                                ...range
-                            };
+                            return this.buildScoringResult(range, vars, values, context); 
                         }
                     }
                 }
-                return {
-                    score: branch.score || 0,
-                    ...branch
-                };
+                // No ranges found, return branch result
+                return this.buildScoringResult(branch, vars, values, context); 
             }
         }
 
-        return { score: 0 };
+        // No match found
+        return this.createDefaultScoringResult();
     }
 
-    /**
-     * Process simple scoring
-     */
+
+    buildScoringResult(matchedRule, vars = [], values = [], context = {}) { 
+        if (!matchedRule) {
+            return this.createDefaultScoringResult();
+        }
+
+        // Start with core result
+        const result = {
+            score: matchedRule.score || matchedRule.result || 0
+        };
+
+        // Add metadata about the match
+        if (vars.length > 0 && values.length > 0) {
+            result.primary_var = vars[0];
+            result.primary_value = values[0];
+            
+            if (vars.length > 1 && values.length > 1) {
+                result.secondary_var = vars[1];
+                result.secondary_value = values[1];
+            }
+        }
+
+        // ✅ เพิ่ม properties เพิ่มเติมแต่ไม่ hardcode null
+        Object.keys(matchedRule).forEach(key => {
+            // ข้าม keys ที่ไม่ต้องการใน result
+            if (!['if', 'score', 'result'].includes(key)) {
+                // ✅ เพิ่มเฉพาะถ้ามีค่าจริงๆ (ไม่ใช่ null/undefined)
+                if (matchedRule[key] !== null && matchedRule[key] !== undefined) {
+                    result[key] = matchedRule[key];
+                }
+            }
+        });
+
+        // Handle set_vars if present
+        if (matchedRule.set_vars) {
+            Object.assign(context, matchedRule.set_vars);
+        }
+
+        return result;
+    }
+
+
+    createDefaultScoringResult() {
+        return {
+            score: 0
+        };
+    }
+
     processSimpleScoring(scoring, context) {
         // Implementation for simple scoring logic
         if (this.evaluateCondition(scoring.if, null, context)) {
-            return scoring.score || 0;
+            const result = {
+                score: scoring.score || scoring.result || 0
+            };
+            
+            Object.keys(scoring).forEach(key => {
+                if (!['if', 'score', 'result'].includes(key)) {
+                    if (scoring[key] !== null && scoring[key] !== undefined) {
+                        result[key] = scoring[key];
+                    }
+                }
+            });
+            
+            return result;
         }
-        return 0;
+        return this.createDefaultScoringResult();
     }
 
+
+    // ====================================
+    // HELPER METHODS
+    // ====================================
+
     /**
-     * Evaluate condition with support for nested AND/OR
+     * Evaluate condition - NEW method to match TypeScript
      */
-    evaluateCondition(condition, switchValue, context) {
+    evaluateCondition(condition, targetValue, context) {
         if (!condition) return false;
 
-        // Handle nested AND logic
+        // Handle AND conditions
         if (condition.and && Array.isArray(condition.and)) {
             return condition.and.every(subCondition => 
-                this.evaluateCondition(subCondition, switchValue, context)
+                this.evaluateCondition(subCondition, targetValue, context)
             );
         }
 
-        // Handle nested OR logic
+        // Handle OR conditions
         if (condition.or && Array.isArray(condition.or)) {
             return condition.or.some(subCondition => 
-                this.evaluateCondition(subCondition, switchValue, context)
+                this.evaluateCondition(subCondition, targetValue, context)
             );
         }
 
-        // Handle variable-based condition
-        if (condition.field || condition.var) {
-            const fieldName = condition.field || condition.var;
-            let fieldValue;
-            
-            if (fieldName.startsWith('$')) {
-                const varName = fieldName.substring(1);
-                fieldValue = context[varName];
-            } else {
-                fieldValue = context[fieldName];
-            }
+        // Handle simple operation
+        if (condition.op !== undefined) {
+            const leftValue = condition.var ? 
+                (context[condition.var] !== undefined ? context[condition.var] : targetValue) : 
+                targetValue;
+            const rightValue = condition.value;
 
-            if (fieldValue === undefined) {
-                return false;
-            }
-
-            const operator = condition.operator || condition.op || '==';
-            const compareValue = this.resolveValue(condition.value, context);
-            
-            return this.compareValues(fieldValue, operator, compareValue);
-        }
-
-        // Handle direct comparison with switchValue
-        if (condition.op && 'value' in condition) {
-            const compareValue = this.resolveValue(condition.value, context);
-            return this.compareValues(switchValue, condition.op, compareValue);
+            return this.compareValues(leftValue, rightValue, condition.op);
         }
 
         return false;
     }
 
     /**
-     * Compare values using operator
+     * Compare values with operator - NEW method to match TypeScript
      */
-    compareValues(leftValue, operator, rightValue) {
+    compareValues(left, right, operator) {
         switch (operator) {
             case '==':
-            case 'equals':
-                return leftValue == rightValue;
+            case '===':
+                return left == right;
             case '!=':
-            case 'not_equals':
-                return leftValue != rightValue;
+            case '!==':
+                return left != right;
             case '>':
-            case 'greater_than':
-                return Number(leftValue) > Number(rightValue);
+                return Number(left) > Number(right);
             case '>=':
-            case 'greater_than_or_equal':
-                return Number(leftValue) >= Number(rightValue);
+                return Number(left) >= Number(right);
             case '<':
-            case 'less_than':
-                return Number(leftValue) < Number(rightValue);
+                return Number(left) < Number(right);
             case '<=':
-            case 'less_than_or_equal':
-                return Number(leftValue) <= Number(rightValue);
-            case 'in':
-                return Array.isArray(rightValue) ? rightValue.includes(leftValue) : false;
-            case 'not_in':
-                return Array.isArray(rightValue) ? !rightValue.includes(leftValue) : true;
+                return Number(left) <= Number(right);
             case 'between':
-                if (Array.isArray(rightValue) && rightValue.length === 2) {
-                    const num = Number(leftValue);
-                    return num >= Number(rightValue[0]) && num <= Number(rightValue[1]);
+                if (Array.isArray(right) && right.length === 2) {
+                    const numLeft = Number(left);
+                    return numLeft >= Number(right[0]) && numLeft <= Number(right[1]);
                 }
                 return false;
+            case 'in':
+                return Array.isArray(right) && right.includes(left);
             case 'contains':
-                return String(leftValue).includes(String(rightValue));
+                return String(left).includes(String(right));
             case 'starts_with':
-                return String(leftValue).startsWith(String(rightValue));
+                return String(left).startsWith(String(right));
             case 'ends_with':
-                return String(leftValue).endsWith(String(rightValue));
+                return String(left).endsWith(String(right));
             default:
                 throw new RuleFlowException(`Unknown operator: ${operator}`);
         }
     }
 
     /**
-     * Resolve value from context or return literal
+     * Resolve value from context or return literal - NEW method to match TypeScript
      */
     resolveValue(value, context) {
-        if (typeof value === 'string' && value.startsWith('$')) {
-            const varName = value.substring(1);
-            return context[varName];
+        if (typeof value === 'string') {
+            // Handle $ variable references
+            if (value.startsWith('$')) {
+                const varName = value.substring(1);
+                return context[varName] !== undefined ? context[varName] : value;
+            }
+
+            // Handle direct variable references
+            if (context[value] !== undefined) {
+                return context[value];
+            }
+
+            // Handle expressions
+            if (value.includes('+') || value.includes('-') || value.includes('*') || value.includes('/') || value.includes('(')) {
+                try {
+                    this.evaluator.setVariables(context);
+                    return this.evaluator.evaluate(value);
+                } catch (error) {
+                    // Return literal value if evaluation fails
+                    return value;
+                }
+            }
         }
+
+        // Return literal value
         return value;
     }
+}
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { FormulaProcessor };
+} else {
+    window.FormulaProcessor = FormulaProcessor;
 }
