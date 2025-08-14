@@ -43,7 +43,9 @@
 <body>
     <div class="container">
         <div class="toolbar">
-            <button class="tool-btn active" data-tool="select">↖</button>
+            <button class="tool-btn active" data-tool="select">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="#e3e3e3" width="16&quot;" height="16px"><path d="m320-410 79-110h170L320-716v306ZM551-80 406-392 240-160v-720l560 440H516l144 309-109 51ZM399-520Z"></path></svg>
+            </button>
             
             <!-- <button class="tool-btn" data-tool="rectangle">⬜</button>
             <button class="tool-btn" data-tool="circle">⚪</button> -->
@@ -78,8 +80,7 @@
     </div>
 
     <script type="module">
-        import { MapEditor } from './map-editor/MapEditor.js';
-        
+        import { MapEditor } from './map-editor/MapEditor.js';        
         // Initialize
         const canvas = document.getElementById('canvas');
         const editor = new MapEditor(canvas);

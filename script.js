@@ -1525,9 +1525,12 @@ $(document).ready(function () {
      * Extract input variables from components
      */
     function extractInputVariables() {
+
+        console.log('🔍 extractInputVariables called');
+
         const inputs = new Set();
         const calculatedValues = new Set();
-
+        
         // Collect calculated values first
         components.forEach(comp => {
             const json = comp.instance.toJSON();
@@ -1537,41 +1540,44 @@ $(document).ready(function () {
                 calculatedValues.add(varName);
             }
         });
-
+        
+        console.log('🔍 Calculated Values:', Array.from(calculatedValues));
+        
         // Extract variables from formulas
         components.forEach(comp => {
             const json = comp.instance.toJSON();
-
-            if (json.formula) {
-                const variables = json.formula.match(/\$(\w+)/g);
-                if (variables) {
-                    variables.forEach(variable => {
-                        const varName = variable.substring(1);
-                        if (!calculatedValues.has(varName)) {
-                            inputs.add(varName);
-                        }
-                    });
-                }
+            console.log('🔍 Processing component:', json);
+            
+            // เพิ่มการตรวจสอบ inputs array
+            if (json.inputs && Array.isArray(json.inputs)) {
+                console.log('🔍 Found inputs array:', json.inputs);
+                json.inputs.forEach(input => {
+                    const varName = input.startsWith('$') ? input.substring(1) : input;
+                    if (!calculatedValues.has(varName)) {
+                        console.log(`✅ Adding from inputs: ${varName}`);
+                        inputs.add(varName);
+                    } else {
+                        console.log(`❌ Skipping calculated: ${varName}`);
+                    }
+                });
             }
-
-            // Extract from switch conditions
-            if (json.switch) {
-                const switchVar = json.switch.startsWith('$') ? json.switch.substring(1) : json.switch;
-                if (!calculatedValues.has(switchVar)) {
-                    inputs.add(switchVar);
-                }
-            }
-
-            // Extract from conditions
-            if (json.conditions) {
-                extractVariablesFromConditions(json.conditions, inputs, calculatedValues);
-            }
-
-            if (json.when) {
-                extractVariablesFromConditions(json.when, inputs, calculatedValues);
+            
+            // Extract from scoring variables
+            if (json.scoring && json.scoring.ifs && json.scoring.ifs.vars) {
+                console.log('🔍 Found scoring vars:', json.scoring.ifs.vars);
+                json.scoring.ifs.vars.forEach(variable => {
+                    const varName = variable.startsWith('$') ? variable.substring(1) : variable;
+                    if (!calculatedValues.has(varName)) {
+                        console.log(`✅ Adding from scoring: ${varName}`);
+                        inputs.add(varName);
+                    } else {
+                        console.log(`❌ Skipping calculated: ${varName}`);
+                    }
+                });
             }
         });
-
+        
+        console.log('🔍 Final inputs:', Array.from(inputs));
         return Array.from(inputs);
     }
 
@@ -1627,32 +1633,92 @@ $(document).ready(function () {
     /**
      * Render input variables using jQuery
      */
-    function renderInputVariables(inputs) {
+    function renderInputVariables(inputVariables) {
         const $container = $('#inputVariables');
-
-        if (inputs.length === 0) {
+        
+        if (!inputVariables || inputVariables.length === 0) {
             $container.html('<p class="text-muted mb-0">Add components to see input variables</p>');
             return;
         }
-
+        
+        const calculatedValues = new Set();
+        
+        // เก็บ base calculated values
+        components.forEach(comp => {
+            const json = comp.instance.toJSON();
+            calculatedValues.add(json.id);
+            if (json.as) {
+                const varName = json.as.startsWith('$') ? json.as.substring(1) : json.as;
+                calculatedValues.add(varName);
+            }
+        });
+        
+        // ✅ Debug scoring components
+        components.forEach(comp => {
+            const json = comp.instance.toJSON();
+            console.log('🔍 Component:', json.id, 'Type:', json.scoring ? 'scoring' : 'other');
+            
+            if (json.scoring && json.scoring.ifs && json.scoring.ifs.tree) {
+                console.log('🔍 Scoring tree:', json.scoring.ifs.tree);
+                
+                json.scoring.ifs.tree.forEach((branch, branchIndex) => {
+                    console.log(`🔍 Branch ${branchIndex}:`, branch);
+                    
+                    if (branch.ranges) {
+                        branch.ranges.forEach((range, rangeIndex) => {
+                            console.log(`🔍 Range ${branchIndex}-${rangeIndex}:`, range);
+                            
+                            Object.keys(range).forEach(key => {
+                                if (!['if', 'score', 'set_vars'].includes(key)) {
+                                    console.log(`🔍 Found additional property: ${key}`);
+                                    
+                                    const prop1 = `${json.id}_${key}`;
+                                    calculatedValues.add(prop1);
+                                    console.log(`🔍 Added: ${prop1}`);
+                                    
+                                    if (json.as) {
+                                        const varName = json.as.startsWith('$') ? json.as.substring(1) : json.as;
+                                        const prop2 = `${varName}_${key}`;
+                                        calculatedValues.add(prop2);
+                                        console.log(`🔍 Added: ${prop2}`);
+                                    }
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+        });
+        
+        const filteredInputs = inputVariables.filter(input => !calculatedValues.has(input));
+        
+        console.log('🔍 Original inputs:', inputVariables);
+        console.log('🔍 Calculated values:', Array.from(calculatedValues));
+        console.log('🔍 Filtered inputs:', filteredInputs);
+        
+        if (filteredInputs.length === 0) {
+            $container.html('<p class="text-muted mb-0">All variables are calculated - no inputs needed</p>');
+            return;
+        }
+        
         $container.empty();
-
-        inputs.forEach(input => {
+        
+        filteredInputs.forEach(input => {
             const $inputDiv = $(`
-               <div class="input-variable mb-2" data-input="${input}">
-                   <label class="form-label small">${input}</label>
-                   <input type="text" 
-                          class="form-control form-control-sm" 
-                          id="input_${input}" 
-                          placeholder="Enter ${input}"
-                          step="any">
-               </div>
-           `);
-
+                <div class="input-variable mb-2" data-input="${input}">
+                    <label class="form-label small">${input}</label>
+                    <input type="number" 
+                        class="form-control form-control-sm" 
+                        id="input_${input}" 
+                        placeholder="Enter ${input}"
+                        step="any">
+                </div>
+            `);
+            
             $container.append($inputDiv);
         });
-
-        debug(`Rendered ${inputs.length} input variables`, 'info');
+        
+        debug(`Rendered ${filteredInputs.length} input variables`, 'info');
     }
 
     /**

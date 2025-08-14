@@ -2,11 +2,13 @@ export class CanvasEngine {
     constructor(canvas, options = {}) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+        this.handleSizePx = options.handleSizePx ?? 12;
         
         // Core properties
         this.zoom = 1;
         this.panX = 0;
         this.panY = 0;
+        this.dpr = window.devicePixelRatio || 1;
         
         // Grid snapping
         this.gridSize = options.gridSize || 20;
@@ -36,8 +38,21 @@ export class CanvasEngine {
     setCanvasSize() {
         const container = this.canvas.parentElement;
         const rect = container.getBoundingClientRect();
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height;
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set actual size in memory (scaled up for DPR)
+        this.canvas.width = Math.floor(rect.width * dpr);
+        this.canvas.height = Math.floor(rect.height * dpr);
+        
+        // Set display size (CSS pixels)
+        this.canvas.style.width = rect.width + 'px';
+        this.canvas.style.height = rect.height + 'px';
+        
+        // Scale context to match device pixel ratio
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        
+        // Store DPR for use in other methods
+        this.dpr = dpr;
     }
 
     resizeCanvas() {
@@ -154,77 +169,28 @@ export class CanvasEngine {
 
     // Resize utilities
     getResizeHandles(bounds) {
-        const { x, y, width, height } = bounds;
-        const handleSize = 10;  
-        const hitArea = 20;    
+        const { x, y, width, height } = bounds;        
+        const handleSize = this.handleSizePx / this.zoom;
         
         return {
-            nw: { 
-                x: x - handleSize/2, y: y - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x - hitArea/2, hitY: y - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'nw-resize'
-            },
-            ne: { 
-                x: x + width - handleSize/2, y: y - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x + width - hitArea/2, hitY: y - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'ne-resize'
-            },
-            sw: { 
-                x: x - handleSize/2, y: y + height - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x - hitArea/2, hitY: y + height - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'sw-resize'
-            },
-            se: { 
-                x: x + width - handleSize/2, y: y + height - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x + width - hitArea/2, hitY: y + height - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'se-resize'
-            },
-            n: { 
-                x: x + width/2 - handleSize/2, y: y - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x + width/2 - hitArea/2, hitY: y - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'n-resize'
-            },
-            s: { 
-                x: x + width/2 - handleSize/2, y: y + height - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x + width/2 - hitArea/2, hitY: y + height - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 's-resize'
-            },
-            e: { 
-                x: x + width - handleSize/2, y: y + height/2 - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x + width - hitArea/2, hitY: y + height/2 - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'e-resize'
-            },
-            w: { 
-                x: x - handleSize/2, y: y + height/2 - handleSize/2, 
-                width: handleSize, height: handleSize,
-                hitX: x - hitArea/2, hitY: y + height/2 - hitArea/2,
-                hitWidth: hitArea, hitHeight: hitArea,
-                cursor: 'w-resize'
-            }
+            nw: { x: x - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
+            ne: { x: x + width - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
+            sw: { x: x - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
+            se: { x: x + width - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
+            n:  { x: x + width/2 - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
+            s:  { x: x + width/2 - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
+            e:  { x: x + width - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize },
+            w:  { x: x - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize }
         };
     }
 
     getHandleAtPoint(bounds, px, py) {
-         const handles = this.getResizeHandles(bounds);
-    
+        const handles = this.getResizeHandles(bounds);
+        
         for (const [handleName, handle] of Object.entries(handles)) {
-            if (px >= handle.hitX && px <= handle.hitX + handle.hitWidth &&
-                py >= handle.hitY && py <= handle.hitY + handle.hitHeight) {
-                return { name: handleName, cursor: handle.cursor };
+            if (px >= handle.x && px <= handle.x + handle.width &&
+                py >= handle.y && py <= handle.y + handle.height) {
+                return handleName;
             }
         }
         return null;
@@ -279,52 +245,31 @@ export class CanvasEngine {
     }
 
     drawResizeHandles(bounds) {
-        const screenBounds = {
-            x: (bounds.x * this.zoom) + this.panX,
-            y: (bounds.y * this.zoom) + this.panY,
-            width: bounds.width * this.zoom,
-            height: bounds.height * this.zoom
-        };
+        const handles = this.getResizeHandles(bounds);
         
-        const handleSize = 10;  // เพิ่มเป็น 10px
-        
-        const handles = [
-            { x: screenBounds.x - handleSize/2, y: screenBounds.y - handleSize/2 },
-            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y - handleSize/2 },
-            { x: screenBounds.x - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
-            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
-            { x: screenBounds.x + screenBounds.width/2 - handleSize/2, y: screenBounds.y - handleSize/2 },
-            { x: screenBounds.x + screenBounds.width/2 - handleSize/2, y: screenBounds.y + screenBounds.height - handleSize/2 },
-            { x: screenBounds.x + screenBounds.width - handleSize/2, y: screenBounds.y + screenBounds.height/2 - handleSize/2 },
-            { x: screenBounds.x - handleSize/2, y: screenBounds.y + screenBounds.height/2 - handleSize/2 }
-        ];
-        
-        this.ctx.save();
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        
-        // Figma-style handles
+        // Draw in world space (using current transform)
         this.ctx.fillStyle = '#ffffff';
         this.ctx.strokeStyle = '#0066cc';
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 2 / this.zoom;
         
-        // เพิ่ม shadow เหมือน Figma
+        // Add shadow effect
+        this.ctx.save();
         this.ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
-        this.ctx.shadowBlur = 4;
+        this.ctx.shadowBlur = 4 / this.zoom;
         this.ctx.shadowOffsetX = 0;
-        this.ctx.shadowOffsetY = 2;
+        this.ctx.shadowOffsetY = 2 / this.zoom;
         
-        for (const handle of handles) {
-            // วาดสี่เหลี่ยมสีขาวก่อน
-            this.ctx.fillRect(handle.x, handle.y, handleSize, handleSize);
-            // แล้ววาดขอบสีน้ำเงิน
-            this.ctx.strokeRect(handle.x, handle.y, handleSize, handleSize);
+        for (const handle of Object.values(handles)) {
+            // Draw white square with blue border
+            this.ctx.fillRect(handle.x, handle.y, handle.width, handle.height);
+            this.ctx.strokeRect(handle.x, handle.y, handle.width, handle.height);
         }
         
+        // Reset shadow
         this.ctx.shadowColor = 'transparent';
         this.ctx.shadowBlur = 0;
         this.ctx.shadowOffsetX = 0;
         this.ctx.shadowOffsetY = 0;
-        
         this.ctx.restore();
     }
 
@@ -376,7 +321,13 @@ export class CanvasEngine {
     }
 
     render() {
+        // Clear with DPR consideration
+        this.ctx.save();
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+        
+        // Apply DPR scale first, then world transforms
         this.ctx.save();
         this.ctx.scale(this.zoom, this.zoom);
         this.ctx.translate(this.panX / this.zoom, this.panY / this.zoom);

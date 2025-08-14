@@ -1,3 +1,5 @@
+
+
 export class ObjectManager {
     constructor() {
         // Flat arrays for performance
@@ -13,6 +15,9 @@ export class ObjectManager {
         this.walkable = [];
         this.labels = [];
         this.nextId = 0;
+        
+        // ID to Index mapping for efficient lookups
+        this.idToIndex = new Map();
     }
 
     createObject(type, x, y, width, height, color = '#3498db', mapType = null) {
@@ -30,11 +35,17 @@ export class ObjectManager {
         this.selected[index] = false;
         this.walkable[index] = mapType !== 'wall';
         this.labels[index] = '';
+        
+        // Update ID mapping
+        this.idToIndex.set(id, index);
 
         return { id, index };
     }
 
     removeObject(index) {
+        const id = this.ids[index];
+        
+        // Remove from arrays
         this.ids.splice(index, 1);
         this.types.splice(index, 1);
         this.mapTypes.splice(index, 1);
@@ -46,6 +57,12 @@ export class ObjectManager {
         this.selected.splice(index, 1);
         this.walkable.splice(index, 1);
         this.labels.splice(index, 1);
+        
+        // Update ID mappings - remove deleted ID and update shifted indices
+        this.idToIndex.delete(id);
+        for (let i = index; i < this.ids.length; i++) {
+            this.idToIndex.set(this.ids[i], i);
+        }
     }
 
     updateObject(index, props) {
@@ -75,15 +92,16 @@ export class ObjectManager {
 
     contains(index, px, py) {
         if (this.mapTypes[index] === 'waypoint') {
-            const centerX = this.x[index] + this.width[index]/2;
-            const centerY = this.y[index] + this.height[index]/2;
-            const radius = 8;
-            const distance = Math.sqrt((px - centerX)**2 + (py - centerY)**2);
+            const centerX = this.x[index] + this.width[index] / 2;
+            const centerY = this.y[index] + this.height[index] / 2;
+            // ใช้รัศมีจากขนาดจริงของ object (ไม่พึ่ง import ภายนอก)
+            const radius = Math.min(this.width[index], this.height[index]) / 2;
+            const distance = Math.sqrt((px - centerX) ** 2 + (py - centerY) ** 2);
             return distance <= radius;
         }
         
         return px >= this.x[index] && px <= this.x[index] + this.width[index] &&
-               py >= this.y[index] && py <= this.y[index] + this.height[index];
+            py >= this.y[index] && py <= this.y[index] + this.height[index];
     }
 
     selectObject(index) {
@@ -100,6 +118,14 @@ export class ObjectManager {
 
     getSelected() {
         return this.selected.findIndex(sel => sel);
+    }
+    
+    getIndexById(id) {
+        return this.idToIndex.get(id);
+    }
+
+    getIdByIndex(index) {
+        return this.ids[index];
     }
 
     getObjectCount() {

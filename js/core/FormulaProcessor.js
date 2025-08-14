@@ -252,9 +252,21 @@ class FormulaProcessor {
         if (formula.scoring.ifs) {
             // Multi-dimensional scoring
             const result = this.processMultiConditionScoring(formula.scoring.ifs, context);
-            context[formula.id] = result;
+            
+            const storeAs = formula.as || formula.id;
+            const variableName = storeAs.startsWith('$') ? storeAs.substring(1) : storeAs;
+            
+            context[formula.id] = result.score || 0;
+            
+            const excludedKeys = ['score', 'primary_var', 'primary_value', 'secondary_var', 'secondary_value'];
+            Object.keys(result).forEach(key => {
+                if (!excludedKeys.includes(key) && result[key] !== undefined) {
+                    context[`${formula.id}_${key}`] = result[key];           // scoring_1755155283892_dd
+                    context[`${variableName}_${key}`] = result[key];         // storeasvalue_dd
+                }
+            });
+            
         } else if (formula.scoring.if) {
-            // Simple scoring
             const result = this.processSimpleScoring(formula.scoring, context);
             context[formula.id] = result;
         } else {
@@ -324,14 +336,12 @@ class FormulaProcessor {
             }
         }
 
-        // ✅ เพิ่ม properties เพิ่มเติมแต่ไม่ hardcode null
+        // เพิ่ม properties เพิ่มเติมแต่ไม่ hardcode null
+      
+        const excludedKeys = ['if', 'score', 'result', 'set_vars', 'ranges'];
         Object.keys(matchedRule).forEach(key => {
-            // ข้าม keys ที่ไม่ต้องการใน result
-            if (!['if', 'score', 'result'].includes(key)) {
-                // ✅ เพิ่มเฉพาะถ้ามีค่าจริงๆ (ไม่ใช่ null/undefined)
-                if (matchedRule[key] !== null && matchedRule[key] !== undefined) {
-                    result[key] = matchedRule[key];
-                }
+            if (!excludedKeys.includes(key) && matchedRule[key] !== undefined) {
+                result[key] = matchedRule[key]; // เพิ่ม properties เพิ่มเติม เช่น dd: 33
             }
         });
 

@@ -2,6 +2,7 @@ import { CanvasEngine } from '../core/CanvasEngine.js';
 import { ObjectManager } from '../core/ObjectManager.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { DirtyRectManager } from '../core/DirtyRectManager.js';
+import { MAP_OBJECT_STYLES } from './MapObjects.js';
 
 export class MapEditor extends CanvasEngine {
     constructor(canvas) {
@@ -12,10 +13,8 @@ export class MapEditor extends CanvasEngine {
         this.dirtyManager = new DirtyRectManager();
         this.currentTool = 'select';
         
-        // เพิ่ม cache สำหรับ handle detection
-        this.lastMousePos = null;
-        this.hoveredHandle = null;
-        this.hoveredObject = -1;
+        // cursor state tracking
+        this.currentCursor = 'default';
         
         this.setupMapEventListeners();
         this.setupUI();
@@ -29,6 +28,13 @@ export class MapEditor extends CanvasEngine {
                 document.querySelector('.tool-btn.active').classList.remove('active');
                 btn.classList.add('active');
                 this.currentTool = btn.dataset.tool;
+                
+                // reset cursor เมื่อเปลี่ยน tool
+                if (this.currentTool === 'pan') {
+                    this.updateCursor('grab');
+                } else {
+                    this.updateCursor('default');
+                }
             });
         });
 
@@ -56,32 +62,63 @@ export class MapEditor extends CanvasEngine {
         this.onZoomChange = () => this.updateInfo();
     }
 
+    updateCursor(cursor) {
+        if (this.currentCursor !== cursor) {
+            this.currentCursor = cursor;
+            this.canvas.style.cursor = cursor;
+        }
+    }
+
+    getCursorForHandle(handle) {
+        const cursorMap = {
+            'nw': 'nwse-resize',
+            'ne': 'nesw-resize', 
+            'sw': 'nesw-resize',
+            'se': 'nwse-resize',
+            'n': 'ns-resize',
+            's': 'ns-resize',
+            'e': 'ew-resize',
+            'w': 'ew-resize'
+        };
+        return cursorMap[handle] || 'default';
+    }
+
     handleMouseDown(e, pos) {
         if (this.currentTool === 'select') {
-            const clickedIndex = this.getObjectAt(pos.x, pos.y);
             const selectedIndex = this.objects.getSelected();
-            
-            if (clickedIndex !== -1) {
-                if (selectedIndex === clickedIndex && this.objects.canResize(clickedIndex)) {
-                    const bounds = this.objects.getBounds(clickedIndex);
-                    const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
-                    
-                    if (handle) {
-                        this.isResizing = true;
-                        this.resizeHandle = handle.name;  // ใช้ handle.name
-                        this.resizeStartBounds = { ...bounds };
-                        return;
-                    }
+
+            // 1) ถ้ามี selection อยู่ ให้ลองจับ "handle" ก่อน
+            if (selectedIndex !== -1 && this.objects.canResize(selectedIndex)) {
+                const bounds = this.objects.getBounds(selectedIndex);
+                const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
+                if (handle) {
+                    this.isResizing = true;
+                    this.resizeHandle = handle;
+                    this.resizeStartBounds = { ...bounds };
+                    this.updateCursor(this.getCursorForHandle(handle));
+                    this.render();
+                    return;
                 }
-                
+            }
+
+            // 2) ไม่โดน handle → เช็คโดน object เพื่อ select/drag
+            const clickedIndex = this.getObjectAt(pos.x, pos.y);
+            if (clickedIndex !== -1) {
                 this.objects.selectObject(clickedIndex);
                 this.isDragging = true;
                 this.dragOffsetX = pos.x - this.objects.x[clickedIndex];
                 this.dragOffsetY = pos.y - this.objects.y[clickedIndex];
-            } else {
-                this.objects.selectObject(-1);
+                this.updateCursor('move');
+                this.render();
+                return;
             }
-            
+
+            // 3) คลิกพื้นที่ว่าง → เคลียร์ selection
+            this.objects.selectObject(-1);
+            this.updateCursor('default');
+            this.render();
+            return;
+
         } else if (this.isDrawingTool(this.currentTool)) {
             this.isDrawing = true;
             
@@ -89,34 +126,65 @@ export class MapEditor extends CanvasEngine {
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
-            this.canvas.style.cursor = 'grabbing';
+            this.updateCursor('grabbing');
         }
         
         this.render();
     }
 
     handleMouseMove(e, pos) {
-        // Cache mouse position
-        this.lastMousePos = pos;
-        
-        // Update UI state ก่อน
-        if (!this.isResizing && !this.isDragging && !this.isDrawing && !this.isPanning) {
-            this.updateHoverState(pos);
+        // update cursor 
+        if (this.isDrawingTool(this.currentTool) && this.currentTool !== 'select') {
+            this.updateCursor('crosshair');
         }
         
+        
+        if (this.currentTool === 'select' && !this.isDragging && !this.isResizing && !this.isPanning && !this.isDrawing) {
+            const selectedIndex = this.objects.getSelected();
+            let newCursor = 'default';
+
+            // เช็ค resize handles ก่อนถ้ามี object
+            if (selectedIndex !== -1 && this.objects.canResize(selectedIndex)) {
+                const bounds = this.objects.getBounds(selectedIndex);
+                const handle = this.getHandleAtPoint(bounds, pos.x, pos.y);
+                if (handle) {
+                    newCursor = this.getCursorForHandle(handle);
+                } else {
+                    // อยู่บน selected object
+                    if (this.objects.contains(selectedIndex, pos.x, pos.y)) {
+                        newCursor = 'move';
+                    }
+                }
+            } else {
+                // ไม่สามารถ resize ได้
+                const hoveredIndex = this.getObjectAt(pos.x, pos.y);
+                if (hoveredIndex !== -1) {
+                    newCursor = 'move';
+                }
+            }
+
+            this.updateCursor(newCursor);
+        }
+
+        // Pan tool cursor
+        if (this.currentTool === 'pan' && !this.isPanning) {
+            this.updateCursor('grab');
+        }
+
         if (this.isResizing) {
             const selectedIndex = this.objects.getSelected();
             if (selectedIndex !== -1) {
+                const id = this.objects.getIdByIndex(selectedIndex);
                 const newBounds = this.calculateResize(this.resizeHandle, this.resizeStartBounds, pos);
                 
                 this.addDirtyRect(this.objects.getBounds(selectedIndex));
-                this.spatialGrid.removeObject(selectedIndex, 
+                this.spatialGrid.removeObject(id, 
                     this.objects.x[selectedIndex], this.objects.y[selectedIndex],
                     this.objects.width[selectedIndex], this.objects.height[selectedIndex]);
                 
                 this.objects.setBounds(selectedIndex, newBounds);
                 
-                this.spatialGrid.addObject(selectedIndex, newBounds.x, newBounds.y, newBounds.width, newBounds.height);
+                this.spatialGrid.addObject(id, newBounds.x, newBounds.y, newBounds.width, newBounds.height);
                 this.addDirtyRect(newBounds);
                 
                 this.optimizedRender();
@@ -125,9 +193,10 @@ export class MapEditor extends CanvasEngine {
         } else if (this.isDragging) {
             const selectedIndex = this.objects.getSelected();
             if (selectedIndex !== -1) {
+                const id = this.objects.getIdByIndex(selectedIndex);
                 this.addDirtyRect(this.objects.getBounds(selectedIndex));
                 
-                this.spatialGrid.removeObject(selectedIndex,
+                this.spatialGrid.removeObject(id,
                     this.objects.x[selectedIndex], this.objects.y[selectedIndex],
                     this.objects.width[selectedIndex], this.objects.height[selectedIndex]);
                 
@@ -140,7 +209,7 @@ export class MapEditor extends CanvasEngine {
                     y: snappedPos.y
                 });
                 
-                this.spatialGrid.addObject(selectedIndex, snappedPos.x, snappedPos.y,
+                this.spatialGrid.addObject(id, snappedPos.x, snappedPos.y,
                     this.objects.width[selectedIndex], this.objects.height[selectedIndex]);
                 
                 this.addDirtyRect(this.objects.getBounds(selectedIndex));
@@ -162,108 +231,40 @@ export class MapEditor extends CanvasEngine {
         }
     }
 
-
-    // แยก hover state detection ออกมา
-    updateHoverState(pos) {
-        const selectedIndex = this.objects.getSelected();
-        
-        // Reset state
-        this.hoveredHandle = null;
-        this.hoveredObject = -1;
-        
-        // เช็ค resize handles ก่อน (สำคัญที่สุด)
-        if (selectedIndex !== -1 && this.objects.canResize(selectedIndex)) {
-            const bounds = this.objects.getBounds(selectedIndex);
-            this.hoveredHandle = this.getHandleAtPoint(bounds, pos.x, pos.y);
-            
-            if (this.hoveredHandle) {
-                this.canvas.style.cursor = this.hoveredHandle.cursor;
-                return;
-            }
-            
-            // เช็คว่าอยู่ในตัว selected object หรือไม่
-            if (this.objects.contains(selectedIndex, pos.x, pos.y)) {
-                this.hoveredObject = selectedIndex;
-                this.canvas.style.cursor = 'move';
-                return;
-            }
-        }
-        
-        // เช็ค objects อื่นๆ
-        this.hoveredObject = this.getObjectAt(pos.x, pos.y);
-        if (this.hoveredObject !== -1) {
-            this.canvas.style.cursor = 'pointer';
-        } else {
-            this.setDefaultCursor();
-        }
-    }
-
-    setDefaultCursor() {
-        if (this.currentTool === 'select') {
-            this.canvas.style.cursor = 'default';
-        } else if (this.currentTool === 'pan') {
-            this.canvas.style.cursor = 'grab';
-        } else {
-            this.canvas.style.cursor = 'crosshair';
-        }
-    }
-
-    handleMouseDown(e, pos) {
-        if (this.currentTool === 'select') {
-            const selectedIndex = this.objects.getSelected();
-            
-            // ใช้ cached hover state แทนการ detect ใหม่
-            if (this.hoveredHandle) {
-                this.isResizing = true;
-                this.resizeHandle = this.hoveredHandle.name;
-                this.resizeStartBounds = { ...this.objects.getBounds(selectedIndex) };
-                this.canvas.style.cursor = this.hoveredHandle.cursor;
-                return;
-            }
-            
-            // ถ้าคลิกใน selected object
-            if (this.hoveredObject === selectedIndex) {
-                this.isDragging = true;
-                this.dragOffsetX = pos.x - this.objects.x[selectedIndex];
-                this.dragOffsetY = pos.y - this.objects.y[selectedIndex];
-                this.canvas.style.cursor = 'move';
-                return;
-            }
-            
-            // คลิก object อื่น
-            if (this.hoveredObject !== -1) {
-                this.objects.selectObject(this.hoveredObject);
-                this.isDragging = true;
-                this.dragOffsetX = pos.x - this.objects.x[this.hoveredObject];
-                this.dragOffsetY = pos.y - this.objects.y[this.hoveredObject];
-                this.canvas.style.cursor = 'move';
-            } else {
-                // คลิกที่ว่าง
-                this.objects.selectObject(-1);
-            }
-            
-        } else if (this.isDrawingTool(this.currentTool)) {
-            this.isDrawing = true;
-            
-        } else if (this.currentTool === 'pan') {
-            this.isPanning = true;
-            this.lastPanX = e.clientX;
-            this.lastPanY = e.clientY;
-            this.canvas.style.cursor = 'grabbing';
-        }
-        
-        this.render();
-    }
-
     handleMouseUp(e, pos) {
+        // รีเซ็ต cursor 
+        if (this.isResizing || this.isDragging) {
+            // หลังจาก resize หรือ drag 
+            setTimeout(() => {
+                if (this.currentTool === 'select') {
+                    const selectedIndex = this.objects.getSelected();
+                    if (selectedIndex !== -1 && this.objects.contains(selectedIndex, pos.x, pos.y)) {
+                        this.updateCursor('move');
+                    } else {
+                        this.updateCursor('default');
+                    }
+                }
+            }, 0);
+        }
+
+        if (this.isPanning) {
+            this.updateCursor('grab');
+        }
+
         if (this.isDrawing) {
             if (this.currentTool === 'waypoint') {
+                // Single click waypoint
                 const snapped = this.snapPosition(pos.x, pos.y);
-                const { index } = this.objects.createObject('circle', snapped.x - 8, snapped.y - 8, 16, 16, '#e74c3c', 'waypoint');
-                this.spatialGrid.addObject(index, snapped.x - 8, snapped.y - 8, 16, 16);
+
+                const r = MAP_OBJECT_STYLES.waypoint.radius;
+                const color = MAP_OBJECT_STYLES.waypoint.color;
+                const { id, index } = this.objects.createObject('circle', snapped.x - r, snapped.y - r, r * 2, r * 2, color, 'waypoint');
+                this.spatialGrid.addObject(id, snapped.x - r, snapped.y - r, r * 2, r * 2);
+
                 this.objects.selectObject(index);
                 
             } else {
+                // Drag to create
                 const width = pos.x - this.startX;
                 const height = pos.y - this.startY;
                 
@@ -283,36 +284,42 @@ export class MapEditor extends CanvasEngine {
                     }
 
                     const { shapeType, color, mapType } = this.getToolProperties(this.currentTool);
-                    const { index } = this.objects.createObject(shapeType, x, y, w, h, color, mapType);
-                    this.spatialGrid.addObject(index, x, y, w, h);
+                    const { id, index } = this.objects.createObject(shapeType, x, y, w, h, color, mapType);
+                    this.spatialGrid.addObject(id, x, y, w, h);
                     this.objects.selectObject(index);
                 }
             }
             this.updateInfo();
         }
-        
-        // ถ้าเพิ่งเสร็จสิ้น interaction ให้ update hover state ใหม่
-        if (this.lastMousePos && !this.isResizing && !this.isDragging && !this.isDrawing && !this.isPanning) {
-            this.updateHoverState(this.lastMousePos);
-        }
     }
 
+    resetAllStates() {
+        super.resetAllStates();
+        
+        // reset cursor 
+        if (this.currentTool === 'select') {
+            this.updateCursor('default');
+        } else if (this.currentTool === 'pan') {
+            this.updateCursor('grab');
+        } else {
+            this.updateCursor('default');
+        }
+    }
 
     isDrawingTool(tool) {
         return ['rectangle', 'circle', 'wall', 'corridor', 'room', 'waypoint'].includes(tool);
     }
 
     getToolProperties(tool) {
-        const MAP_TOOL_CONFIG = {
-            'rectangle': { shapeType: 'rectangle', color: '#3498db', mapType: null },
-            'circle': { shapeType: 'circle', color: '#3498db', mapType: null },
-            'wall': { shapeType: 'rectangle', color: '#2c3e50', mapType: 'wall' },
-            'corridor': { shapeType: 'rectangle', color: '#f39c12', mapType: 'corridor' },
-            'room': { shapeType: 'rectangle', color: '#3498db', mapType: 'room' },
-            'waypoint': { shapeType: 'circle', color: '#e74c3c', mapType: 'waypoint' }
-        };
-        
-        return MAP_TOOL_CONFIG[tool] || { shapeType: 'rectangle', color: '#3498db', mapType: null };
+        // default tools
+        if (tool === 'rectangle') return { shapeType: 'rectangle', color: '#3498db', mapType: null };
+        if (tool === 'circle')    return { shapeType: 'circle',    color: '#3498db', mapType: null };
+        // map tools
+        const s = MAP_OBJECT_STYLES[tool];
+        if (s && (tool === 'wall' || tool === 'corridor' || tool === 'room' || tool === 'waypoint')) {
+            return { shapeType: tool === 'waypoint' ? 'circle' : 'rectangle', color: s.color, mapType: tool };
+        }
+        return { shapeType: 'rectangle', color: '#3498db', mapType: null };
     }
 
     drawContent() {
@@ -332,22 +339,13 @@ export class MapEditor extends CanvasEngine {
         const mapType = this.objects.mapTypes[index];
         
         // Set style based on mapType
-        if (mapType === 'wall') {
-            this.ctx.fillStyle = '#2c3e50';
-            this.ctx.strokeStyle = '#34495e';
-            this.ctx.lineWidth = 2 / this.zoom;
-        } else if (mapType === 'corridor') {
-            this.ctx.fillStyle = 'rgba(243, 156, 18, 0.7)';
-            this.ctx.strokeStyle = '#d68910';
-            this.ctx.lineWidth = 1 / this.zoom;
-        } else if (mapType === 'room') {
-            this.ctx.fillStyle = 'rgba(52, 152, 219, 0.5)';
-            this.ctx.strokeStyle = '#2980b9';
-            this.ctx.lineWidth = 1 / this.zoom;
-        } else if (mapType === 'waypoint') {
-            this.ctx.fillStyle = '#e74c3c';
-            this.ctx.strokeStyle = '#c0392b';
-            this.ctx.lineWidth = 2 / this.zoom;
+        if (mapType === 'wall' || mapType === 'corridor' || mapType === 'room' || mapType === 'waypoint') {
+           const s = MAP_OBJECT_STYLES[mapType];
+            this.ctx.save();
+            this.ctx.globalAlpha = s.opacity ?? 1;
+            this.ctx.fillStyle = s.color;
+            this.ctx.strokeStyle = s.strokeColor;
+            this.ctx.lineWidth = s.strokeWidth / this.zoom;
         } else {
             this.ctx.fillStyle = this.objects.colors[index];
             this.ctx.strokeStyle = '#333';
@@ -365,8 +363,8 @@ export class MapEditor extends CanvasEngine {
             const centerX = this.objects.x[index] + this.objects.width[index]/2;
             const centerY = this.objects.y[index] + this.objects.height[index]/2;
             
-            if (mapType === 'waypoint') {
-                this.ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+             if (mapType === 'waypoint') {
+                this.ctx.arc(centerX, centerY, MAP_OBJECT_STYLES.waypoint.radius, 0, Math.PI * 2);
             } else {
                 const radius = Math.min(this.objects.width[index], this.objects.height[index])/2;
                 this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -374,6 +372,10 @@ export class MapEditor extends CanvasEngine {
             
             this.ctx.fill();
             this.ctx.stroke();
+        }
+
+        if (mapType === 'wall' || mapType === 'corridor' || mapType === 'room' || mapType === 'waypoint') {
+            this.ctx.restore();
         }
 
         // Selection outline
@@ -401,7 +403,7 @@ export class MapEditor extends CanvasEngine {
         if (this.currentTool === 'waypoint' || this.currentTool === 'circle') {
            this.ctx.beginPath();
            if (this.currentTool === 'waypoint') {
-               this.ctx.arc(x + width/2, y + height/2, 8, 0, Math.PI * 2);
+               this.ctx.arc(x + width/2, y + height/2, MAP_OBJECT_STYLES.waypoint.radius, 0, Math.PI * 2);
            } else {
                this.ctx.arc(x + width/2, y + height/2, Math.min(Math.abs(width), Math.abs(height))/2, 0, Math.PI * 2);
            }
@@ -415,75 +417,117 @@ export class MapEditor extends CanvasEngine {
        this.ctx.restore();
    }
 
-   addDirtyRect(bounds) {
-       const padding = 10;
-       const screenX = (bounds.x * this.zoom) + this.panX - padding;
-       const screenY = (bounds.y * this.zoom) + this.panY - padding;
-       const screenWidth = (bounds.width * this.zoom) + (padding * 2);
-       const screenHeight = (bounds.height * this.zoom) + (padding * 2);
-       
-       this.dirtyManager.addDirtyRect(screenX, screenY, screenWidth, screenHeight);
-   }
+    addDirtyRect(bounds) {
+        const dpr = this.dpr || window.devicePixelRatio || 1;
 
-   optimizedRender() {
-       const startTime = performance.now();
-       const dirtyRects = this.dirtyManager.getDirtyRects();
-       
-       if (dirtyRects.length === 0) return;
+        // world -> screen (CSS px)
+        const sx_css = (bounds.x * this.zoom) + this.panX;
+        const sy_css = (bounds.y * this.zoom) + this.panY;
+        const sw_css = (bounds.width * this.zoom);
+        const sh_css = (bounds.height * this.zoom);
 
-       dirtyRects.forEach(rect => {
-           this.ctx.clearRect(rect.x, rect.y, rect.width, rect.height);
-           
-           this.ctx.save();
-           this.ctx.beginPath();
-           this.ctx.rect(rect.x, rect.y, rect.width, rect.height);
-           this.ctx.clip();
+        const PAD_CSS = 10;
+        // แปลงเป็น device px
+        const x_dp  = Math.floor(dpr * (sx_css - PAD_CSS));
+        const y_dp  = Math.floor(dpr * (sy_css - PAD_CSS));
+        const w_dp  = Math.ceil (dpr * (sw_css + PAD_CSS * 2));
+        const h_dp  = Math.ceil (dpr * (sh_css + PAD_CSS * 2));
 
-           this.ctx.scale(this.zoom, this.zoom);
-           this.ctx.translate(this.panX / this.zoom, this.panY / this.zoom);
+        this.dirtyManager.addDirtyRect(x_dp, y_dp, w_dp, h_dp);
+    }
 
-           this.drawGrid();
-           this.drawContent();
+    optimizedRender() {
+        const t0 = performance.now();
+        const dirtyRects = this.dirtyManager.getDirtyRects();
+        if (!dirtyRects.length) return;
 
-           this.ctx.restore();
-       });
+        const PAD = Math.ceil(this.dpr);
 
-       this.dirtyManager.clear();
-       
-       const renderTime = performance.now() - startTime;
-       document.getElementById('renderTime').textContent = renderTime.toFixed(1) + 'ms';
-       document.getElementById('dirtyRects').textContent = dirtyRects.length;
-   }
+        this.ctx.save();
+
+        // 1) ทำงานใน screen space
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // เคลียร์ทุก rect
+        for (const r of dirtyRects) {
+            this.ctx.clearRect(r.x - PAD, r.y - PAD, r.width + PAD*2, r.height + PAD*2);
+        }
+
+        // สร้าง clip รวม
+        this.ctx.beginPath();
+        for (const r of dirtyRects) {
+            this.ctx.rect(r.x - PAD, r.y - PAD, r.width + PAD*2, r.height + PAD*2);
+        }
+        this.ctx.clip();
+
+        // 2) ตั้ง world transform
+        this.ctx.setTransform(
+            this.dpr * this.zoom, 0, 0, this.dpr * this.zoom,
+            this.dpr * this.panX, this.dpr * this.panY
+        );
+
+        // 3) วาดภายใต้ clip รวม
+        this.drawGrid();
+        this.drawContent();
+        
+        this.ctx.restore();
+
+        // 4) ล้างสถานะ dirty
+        this.dirtyManager.clear();
+
+        // 5) อัปเดต UI
+        const dt = performance.now() - t0;
+        const elTime = document.getElementById('renderTime');
+        const elRects = document.getElementById('dirtyRects');
+        if (elTime) elTime.textContent = dt.toFixed(1) + 'ms';
+        if (elRects) elRects.textContent = String(dirtyRects.length);
+    }
 
    getObjectAt(x, y) {
-       for (let i = this.objects.getObjectCount() - 1; i >= 0; i--) {
-           if (this.objects.contains(i, x, y)) {
-               return i;
+       // Use spatial grid for efficient hit-testing
+       const candidateIds = this.spatialGrid.getObjectsAt(x, y);
+       
+       if (candidateIds.size === 0) {
+           return -1;
+       }
+       
+       // Convert IDs to indices and sort by index (z-order)
+       const indices = [];
+       for (const id of candidateIds) {
+           const index = this.objects.getIndexById(id);
+           if (index !== undefined) {
+               indices.push(index);
            }
        }
+       
+       // Sort by index descending (top objects first)
+       indices.sort((a, b) => b - a);
+       
+       // Check from top to bottom
+       for (const index of indices) {
+           if (this.objects.contains(index, x, y)) {
+               return index;
+           }
+       }
+       
        return -1;
    }
 
    deleteObject(index) {
+       const id = this.objects.getIdByIndex(index);
+       
        this.addDirtyRect(this.objects.getBounds(index));
        
-       this.spatialGrid.removeObject(index, 
+       // Remove from spatial grid using ID
+       this.spatialGrid.removeObject(id, 
            this.objects.x[index], this.objects.y[index], 
            this.objects.width[index], this.objects.height[index]);
        
+       // Remove from object manager
        this.objects.removeObject(index);
-       this.rebuildSpatialGrid();
        
        this.updateInfo();
        this.optimizedRender();
-   }
-
-   rebuildSpatialGrid() {
-       this.spatialGrid = new SpatialGrid(100);
-       for (let i = 0; i < this.objects.getObjectCount(); i++) {
-           this.spatialGrid.addObject(i, this.objects.x[i], this.objects.y[i], 
-                                     this.objects.width[i], this.objects.height[i]);
-       }
    }
 
    updateInfo() {

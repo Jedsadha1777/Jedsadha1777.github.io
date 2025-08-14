@@ -108,7 +108,10 @@ class RuleFlow {
        // Validate formula expression
         if (hasFormula) {
             try {
-                this.processor.evaluator.validateFormulaSyntax(formula.formula);
+               // this.processor.evaluator.validateFormulaSyntax(formula.formula);
+                if (!formula.formula || typeof formula.formula !== 'string') {
+                    throw new Error('Formula must be a non-empty string');
+                }
             } catch (error) {
                 errors.push('Formula "' + formula.id + '" syntax error: ' + error.message);
             }

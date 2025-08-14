@@ -150,9 +150,12 @@ class UIController {
     }
 
     updateInputVariables() {
+
+        console.log(' updateInputVariables Input variables:', inputs);
+
         try {
             const inputs = this.componentManager.getAllInputVariables();
-            console.log('Input variables:', inputs);
+            
             
             const $container = $('#inputVariables');
             

@@ -87,57 +87,57 @@ const RuleFlowUI = {
     /**
      * Extract input variables from configuration
      */
-    extractInputVariables(config) {
-        const inputs = new Set();
-        const calculatedValues = new Set(); // Track calculated values
+    // extractInputVariables(config) {
+    //     const inputs = new Set();
+    //     const calculatedValues = new Set(); // Track calculated values
         
-        if (config.formulas) {
-            // First pass: collect calculated values
-            config.formulas.forEach(formula => {
-                calculatedValues.add(formula.id);
-                if (formula.as) {
-                    const varName = formula.as.startsWith('$') ? 
-                        formula.as.substring(1) : formula.as;
-                    calculatedValues.add(varName);
-                }
-            });
+    //     if (config.formulas) {
+    //         // First pass: collect calculated values
+    //         config.formulas.forEach(formula => {
+    //             calculatedValues.add(formula.id);
+    //             if (formula.as) {
+    //                 const varName = formula.as.startsWith('$') ? 
+    //                     formula.as.substring(1) : formula.as;
+    //                 calculatedValues.add(varName);
+    //             }
+    //         });
 
-            // Second pass: extract input variables
-            config.formulas.forEach(formula => {
-                if (formula.formula) {
-                    const variables = formula.formula.match(/\$(\w+)/g);
-                    if (variables) {
-                        variables.forEach(variable => {
-                            const varName = variable.substring(1);
-                            if (!calculatedValues.has(varName)) {
-                                inputs.add(varName);
-                            }
-                        });
-                    }
-                }
+    //         // Second pass: extract input variables
+    //         config.formulas.forEach(formula => {
+    //             if (formula.formula) {
+    //                 const variables = formula.formula.match(/\$(\w+)/g);
+    //                 if (variables) {
+    //                     variables.forEach(variable => {
+    //                         const varName = variable.substring(1);
+    //                         if (!calculatedValues.has(varName)) {
+    //                             inputs.add(varName);
+    //                         }
+    //                     });
+    //                 }
+    //             }
 
-                // Extract from switch variable
-                if (formula.switch) {
-                    const switchVar = formula.switch.startsWith('$') ? 
-                        formula.switch.substring(1) : formula.switch;
-                    if (!calculatedValues.has(switchVar)) {
-                        inputs.add(switchVar);
-                    }
-                }
+    //             // Extract from switch variable
+    //             if (formula.switch) {
+    //                 const switchVar = formula.switch.startsWith('$') ? 
+    //                     formula.switch.substring(1) : formula.switch;
+    //                 if (!calculatedValues.has(switchVar)) {
+    //                     inputs.add(switchVar);
+    //                 }
+    //             }
 
-                // Extract from conditions
-                if (formula.conditions) {
-                    this.extractVariablesFromConditions(formula.conditions, inputs, calculatedValues);
-                }
+    //             // Extract from conditions
+    //             if (formula.conditions) {
+    //                 this.extractVariablesFromConditions(formula.conditions, inputs, calculatedValues);
+    //             }
 
-                if (formula.when) {
-                    this.extractVariablesFromConditions(formula.when, inputs, calculatedValues);
-                }
-            });
-        }
+    //             if (formula.when) {
+    //                 this.extractVariablesFromConditions(formula.when, inputs, calculatedValues);
+    //             }
+    //         });
+    //     }
         
-        return Array.from(inputs);
-    },
+    //     return Array.from(inputs);
+    // },
 
     /**
      * Extract variables from conditions array
