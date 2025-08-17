@@ -12,8 +12,8 @@ export class ObjectManager {
         this.height = [];
         this.colors = [];
         this.selected = [];
-        this.walkable = [];
         this.labels = [];
+        this.extra = [];
         this.nextId = 0;
         
         // ID to Index mapping for efficient lookups
@@ -33,8 +33,8 @@ export class ObjectManager {
         this.height[index] = height;
         this.colors[index] = color;
         this.selected[index] = false;
-        this.walkable[index] = mapType !== 'wall';
         this.labels[index] = '';
+        this.extra[index] = null;
         
         // Update ID mapping
         this.idToIndex.set(id, index);
@@ -55,8 +55,8 @@ export class ObjectManager {
         this.height.splice(index, 1);
         this.colors.splice(index, 1);
         this.selected.splice(index, 1);
-        this.walkable.splice(index, 1);
         this.labels.splice(index, 1);
+        this.extra.splice(index, 1);
         
         // Update ID mappings - remove deleted ID and update shifted indices
         this.idToIndex.delete(id);
@@ -72,6 +72,8 @@ export class ObjectManager {
         if (props.height !== undefined) this.height[index] = props.height;
         if (props.color !== undefined) this.colors[index] = props.color;
         if (props.selected !== undefined) this.selected[index] = props.selected;
+        if (props.label !== undefined) this.labels[index] = props.label;
+        if (props.extra !== undefined) this.extra[index] = props.extra;
     }
 
     getBounds(index) {
@@ -90,34 +92,47 @@ export class ObjectManager {
         this.height[index] = bounds.height;
     }
 
-    contains(index, px, py) {
-        if (this.mapTypes[index] === 'waypoint') {
-            const centerX = this.x[index] + this.width[index] / 2;
-            const centerY = this.y[index] + this.height[index] / 2;
-            // ใช้รัศมีจากขนาดจริงของ object (ไม่พึ่ง import ภายนอก)
-            const radius = Math.min(this.width[index], this.height[index]) / 2;
-            const distance = Math.sqrt((px - centerX) ** 2 + (py - centerY) ** 2);
-            return distance <= radius;
-        }
-        
-        return px >= this.x[index] && px <= this.x[index] + this.width[index] &&
-            py >= this.y[index] && py <= this.y[index] + this.height[index];
-    }
+    // using renderer system in getObjectAt()
 
     selectObject(index) {
-        // Clear all selections
-        for (let i = 0; i < this.selected.length; i++) {
-            this.selected[i] = false;
-        }
-        
-        // Select target
+         this.clearSelection();
         if (index !== -1) {
             this.selected[index] = true;
         }
     }
 
+    toggleSelection(index) {
+        if (index !== -1) {
+            this.selected[index] = !this.selected[index];
+        }
+    }
+    
+    addToSelection(index) {
+        if (index !== -1) {
+            this.selected[index] = true;
+        }
+    }
+    
+    clearSelection() {
+        for (let i = 0; i < this.selected.length; i++) {
+            this.selected[i] = false;
+        }
+    }
+
     getSelected() {
-        return this.selected.findIndex(sel => sel);
+        return this.selected.findIndex(sel => sel);  // First selected
+    }
+
+    getSelectedIndices() {
+        const indices = [];
+        for (let i = 0; i < this.selected.length; i++) {
+            if (this.selected[i]) indices.push(i);
+        }
+        return indices;
+    }
+    
+    hasMultipleSelected() {
+        return this.getSelectedIndices().length > 1;
     }
     
     getIndexById(id) {
@@ -134,5 +149,49 @@ export class ObjectManager {
 
     canResize(index) {
         return this.mapTypes[index] !== 'waypoint';
+    }
+
+     toJSON() {
+        return {
+            version: 1,
+            objects: this.ids.map((id, i) => ({
+                id,
+                type: this.types[i],
+                mapType: this.mapTypes[i],
+                x: this.x[i],
+                y: this.y[i],
+                w: this.width[i],
+                h: this.height[i],
+                color: this.colors[i],
+                label: this.labels[i],
+                extra: this.extra[i] ?? null
+            }))
+        };
+    }
+
+    fromJSON(data) {
+        this.clear();        
+        for (const o of data.objects) {
+            const { index } = this.createObject(o.type, o.x, o.y, o.w, o.h, o.color, o.mapType);
+            this.labels[index] = o.label ?? '';
+            this.extra[index] = o.extra ?? null;
+        }
+    }
+
+    clear() {
+        // Clear all arrays and mappings
+        this.ids.length = 0;
+        this.types.length = 0;
+        this.mapTypes.length = 0;
+        this.x.length = 0;
+        this.y.length = 0;
+        this.width.length = 0;
+        this.height.length = 0;
+        this.colors.length = 0;
+        this.selected.length = 0;
+        this.labels.length = 0;
+        this.extra.length = 0;
+        this.nextId = 0;
+        this.idToIndex.clear();
     }
 }

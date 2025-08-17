@@ -27,8 +27,40 @@ export class CanvasEngine {
         this.dragOffsetX = 0;
         this.dragOffsetY = 0;
 
+         // Event system for plugins
+        this.eventListeners = new Map();
+
         this.setupCoreEventListeners();
         this.setCanvasSize();
+    }
+
+    // Simple event system
+    emit(eventName, data) {
+        const listeners = this.eventListeners.get(eventName) || [];
+        listeners.forEach(listener => {
+            try {
+                listener(data);
+            } catch (error) {
+                console.error(`Error in event listener for ${eventName}:`, error);
+            }
+        });
+    }
+
+    on(eventName, listener) {
+        if (!this.eventListeners.has(eventName)) {
+            this.eventListeners.set(eventName, []);
+        }
+        this.eventListeners.get(eventName).push(listener);
+    }
+
+    off(eventName, listener) {
+        const listeners = this.eventListeners.get(eventName);
+        if (listeners) {
+            const index = listeners.indexOf(listener);
+            if (index > -1) {
+                listeners.splice(index, 1);
+            }
+        }
     }
 
     init() {
@@ -70,10 +102,6 @@ export class CanvasEngine {
         this.canvas.addEventListener('selectstart', (e) => e.preventDefault());
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.resetAllStates();
-            }
-            
             if (e.key === 'g' || e.key === 'G') {
                 this.snapEnabled = !this.snapEnabled;
                 this.onSnapToggle?.();
