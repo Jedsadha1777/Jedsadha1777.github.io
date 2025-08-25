@@ -115,6 +115,15 @@ export class InspectorPanel {
 
     generatePropertyField(property, obj) {
         switch (property) {
+
+            case 'rotation':
+                const rotation = obj.extra?.rotation || 0;
+                return `<div class="inspector-field">
+                    <div class="inspector-label">Rotation (degrees)</div>
+                    <input type="number" class="inspector-input" id="inspector-rotation" value="${rotation}" min="-180" max="180" step="1">
+                </div>`;
+
+
             case 'color':
                 return `<div class="inspector-field"><div class="inspector-label">Color</div><input type="color" class="inspector-input" id="inspector-color" value="${obj.color}"></div>`;
 
@@ -125,7 +134,7 @@ export class InspectorPanel {
                 return `<div class="inspector-field">
                     <div class="inspector-label">Text Content</div>
                     <textarea class="inspector-input" id="inspector-text" rows="3" placeholder="Enter text content...">${obj.extra?.text || ''}</textarea>
-                    <button type="button" class="inspector-input" id="auto-fit-text" style="background: #0066cc; color: white; border: none; padding: 4px 8px; border-radius: 3px; font-size: 11px; margin-top: 4px;">Auto Fit Size</button>
+                    
                 </div>`;
 
             case 'opacity':
@@ -148,6 +157,10 @@ export class InspectorPanel {
                     <option value="center" ${obj.extra?.textAlign === 'center' ? 'selected' : ''}>Center</option>
                     <option value="right" ${obj.extra?.textAlign === 'right' ? 'selected' : ''}>Right</option>
                 </select></div>`;
+
+            case 'portalId':
+               return `<div class="inspector-field"><div class="inspector-label">Portal ID</div><input type="text" class="inspector-input" id="inspector-portalId" value="${obj.extra?.portalId || ''}" placeholder="Enter portal ID..."></div>`;
+
 
             default:
                 return '';
@@ -177,7 +190,9 @@ export class InspectorPanel {
                 fontSize: () => this.updateExtraProperty('fontSize', parsedValue),
                 fontFamily: () => this.updateExtraProperty('fontFamily', parsedValue),
                 textAlign: () => this.updateExtraProperty('textAlign', parsedValue),
-                opacity: () => this.updateExtraProperty('opacity', parsedValue)
+                opacity: () => this.updateExtraProperty('opacity', parsedValue),
+                portalId: () => this.updateExtraProperty('portalId', parsedValue),
+                rotation: () => this.updateExtraProperty('rotation', parsedValue)
             };
 
             const handler = handlers[property];
@@ -223,7 +238,10 @@ export class InspectorPanel {
         };
         
         this.updateExtraProperty = (property, value) => {
-            if (!this.editor.objects.extra[obj.index]) return;
+            if (!this.editor.objects.extra[obj.index]) {
+                this.editor.objects.extra[obj.index] = {};
+            }
+            
             
             const oldData = { 
                 extra: JSON.parse(JSON.stringify(this.editor.objects.extra[obj.index])) 
@@ -288,6 +306,13 @@ export class InspectorPanel {
                 updateProperty('color', e.target.value);
             });
         }
+
+
+        addInputEventListener('inspector-rotation', 'change', (e) => {
+            const rotation = Math.max(-180, Math.min(180, parseInt(e.target.value) || 0));
+            e.target.value = rotation;
+            updateProperty('rotation', rotation);
+        });
 
 
         addInputEventListener('inspector-label', 'change', (e) => updateProperty('label', e.target.value));
@@ -358,6 +383,22 @@ export class InspectorPanel {
         addInputEventListener('inspector-fontSize', 'change', (e) => updateProperty('fontSize', e.target.value, true));
         addInputEventListener('inspector-fontFamily', 'change', (e) => updateProperty('fontFamily', e.target.value));
         addInputEventListener('inspector-textAlign', 'change', (e) => updateProperty('textAlign', e.target.value));
+        
+        
+        // Portal ID with validation
+        addInputEventListener('inspector-portalId', 'change', (e) => {
+            const newPortalId = e.target.value.trim();
+            
+            if (newPortalId && !this.isValidObjectId(newPortalId)) {
+                alert('Portal ID must contain only letters, numbers, underscore, and hyphen');
+                e.target.value = obj.extra?.portalId || '';
+                return;
+            }
+            
+            updateProperty('portalId', newPortalId);
+        });
+
+
 
         // Z-Order buttons
         addInputEventListener('move-up', 'click', () => {
