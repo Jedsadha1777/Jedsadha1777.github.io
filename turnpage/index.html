@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurnPage</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="./css/turnpage.css">
+</head>
+<body>
+    <div id="container">
+        <canvas id="turnpage"></canvas>
+        <button id="prevBtn" class="btn-float-action btn-prv control" disabled>◄ Previous page</button>
+        <button id="nextBtn" class="btn-float-action btn-next control" disabled>Next page ►</button>
+    </div>
+    <div id="controls" class="control">
+        <div class="container">
+            <div id="scrollContainer">
+                <div id="scrollTrack">
+                    <div id="scrollThumb"></div>
+                </div>
+            </div>
+            <div class="groupPageInfo">
+                <div id="pageInfo"></div>
+            </div>
+            <div id="modeToggle" class="hide">
+                <button id="doublePageBtn" class="active">Double page</button>
+                <button id="singlePageBtn">Single Page</button>
+            </div>
+            <button id="thumbnailBtn" disabled> Thumbnails</button>
+        </div>
+    </div>
+    <div id="lightbox">
+        <div id="lightboxHeader">
+            <div id="lightboxTitle">Thumbnails</div>
+            <button id="closeBtn">✕ ปิด</button>
+        </div>
+        <div id="thumbnailGrid"></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="./js/turnpage.js?v=1.018"></script>
+    <script>
+        const turnpage = new TurnPage('turnpage', {
+            // pdfUrl: 'SampleDoc.pdf',
+             jsonUrl: 'SampleDoc/index.json',
+            autoLoad: true,
+        });
+    </script>
+</body>
+</html>

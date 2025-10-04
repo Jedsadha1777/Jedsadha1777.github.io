@@ -1,0 +1,88 @@
+{
+  "title": "SampleDoc",
+  "totalPages": 5,
+  "thumbnails": [
+    "SampleDoc/thumbnails/page-1.jpg",
+    "SampleDoc/thumbnails/page-2.jpg",
+    "SampleDoc/thumbnails/page-3.jpg",
+    "SampleDoc/thumbnails/page-4.jpg",
+    "SampleDoc/thumbnails/page-5.jpg"
+  ],
+  "low": [
+    "SampleDoc/low/page-1.jpg",
+    "SampleDoc/low/page-2.jpg",
+    "SampleDoc/low/page-3.jpg",
+    "SampleDoc/low/page-4.jpg",
+    "SampleDoc/low/page-5.jpg"
+  ],
+  "high": [
+    "SampleDoc/high/page-1.jpg",
+    "SampleDoc/high/page-2.jpg",
+    "SampleDoc/high/page-3.jpg",
+    "SampleDoc/high/page-4.jpg",
+    "SampleDoc/high/page-5.jpg"
+  ],
+  "links": [
+    [],
+    [],
+    [],
+    [],
+    [
+      {
+        "transformedRect": [
+          358.1562,
+          385.6897,
+          495.5312,
+          400.6897
+        ],
+        "url": "http://opensource.org/licenses/MIT",
+        "dest": null,
+        "destPage": null
+      },
+      {
+        "transformedRect": [
+          56.6875,
+          400.6897,
+          130.125,
+          415.3147
+        ],
+        "url": "http://opensource.org/licenses/MIT",
+        "dest": null,
+        "destPage": null
+      },
+      {
+        "transformedRect": [
+          126.0312,
+          430.6897,
+          162.0312,
+          445.3147
+        ],
+        "url": "https://github.com/mozilla/pdf.js",
+        "dest": null,
+        "destPage": null
+      }
+    ]
+  ],
+  "pageSizes": [
+    {
+      "width": 595.2756,
+      "height": 841.8898
+    },
+    {
+      "width": 595.2756,
+      "height": 841.8898
+    },
+    {
+      "width": 595.2756,
+      "height": 841.8898
+    },
+    {
+      "width": 595.2756,
+      "height": 841.8898
+    },
+    {
+      "width": 595.2756,
+      "height": 841.8898
+    }
+  ]
+}
