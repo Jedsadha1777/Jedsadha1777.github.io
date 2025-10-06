@@ -1450,7 +1450,10 @@ class TurnPage {
         const rect = this.canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
 
-        if (x > this.centerX && this.currentPage < this.totalPages - 2) {
+        const maxPage = this.singlePageMode ? this.totalPages - 1 : this.totalPages - 2;
+
+        if (x > this.centerX && this.currentPage < maxPage) {
+
             this.dragging = true;
             this.dragSide = 'R';
             this.dragStartX = x;
