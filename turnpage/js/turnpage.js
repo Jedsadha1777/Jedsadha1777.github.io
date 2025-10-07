@@ -1221,11 +1221,14 @@ class TurnPage {
 
     updatePageInfo() {
         const info = document.getElementById('pageInfo');
+        const nextBtn = document.getElementById('nextBtn');
 
         if (this.isLoading) {
             info.textContent = 'กำลังโหลด...';
             document.getElementById('prevBtn').disabled = true;
             document.getElementById('nextBtn').disabled = true;
+            nextBtn.disabled = true;
+            nextBtn.classList.remove('hidden');
             this.scrollThumb.style.opacity = '0.5';
             return;
         }
@@ -1253,12 +1256,25 @@ class TurnPage {
 
         document.getElementById('prevBtn').disabled = this.currentPage === 0 || this.isFlipping;
 
+        let isLastSpread = false;
         if (this.singlePageMode) {
-            document.getElementById('nextBtn').disabled = this.currentPage >= this.totalPages - 1 || this.isFlipping;
+            // โหมดหน้าเดี่ยว → หน้าสุดท้ายปกติ
+            isLastSpread = this.currentPage >= this.totalPages - 1;
         } else {
-            document.getElementById('nextBtn').disabled = this.currentPage >= this.totalPages - 1 || this.isFlipping;
+            // โหมดหน้าคู่ → มี cover (blank+1) เป็น spread แรก
+            const totalSpreads = Math.ceil((this.totalPages - 1) / 2) + 1;
+            const currentSpread = this.currentPage === 0
+                ? 0
+                : Math.ceil((this.currentPage + 1) / 2);
+            isLastSpread = currentSpread >= totalSpreads - 1;
         }
 
+        nextBtn.disabled = isLastSpread || this.isFlipping;
+        if (isLastSpread) {
+            nextBtn.classList.add('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+        }
         this.updateScrollBar();
     }
 
