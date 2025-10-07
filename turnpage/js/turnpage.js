@@ -88,6 +88,24 @@ class TurnPage {
 
             this.resizeTimeout = setTimeout(() => {
 
+                if (this.options.autoDetectMode) {
+                    const newMode = this.detectViewMode();
+                    if (newMode !== this.singlePageMode) {
+                        this.singlePageMode = newMode;
+                        this.updateModeButtons();
+
+                        //  snap currentPage ให้ถูกก่อน transform
+                        if (!this.singlePageMode) { // double mode
+                            if (this.currentPage > 0 && this.currentPage % 2 === 0) {
+                                this.currentPage -= 1;
+                            }
+                        }
+
+                        //  อัพเดท pagination ทันที
+                        this.updatePageInfo();
+                    }
+                }
+
                 // กรณีใช้ JSON
                 if (this.jsonData && this.jsonData.pageSizes && this.jsonData.pageSizes.length > 0) {
                     const data = this.jsonData;
@@ -209,30 +227,22 @@ class TurnPage {
 
                 this.calculateSize();
 
-                if (this.options.autoDetectMode) {
-                    const newMode = this.detectViewMode();
-                    if (newMode !== this.singlePageMode) {
-                        this.setMode(newMode);
-                        return; // setMode 
-                    }
-                }
-
-                // load after resize
+                const initialPages = this.singlePageMode ? 2 : 4;
                 if (this.pdfDoc && !this.isLoading) {
-                    const initialPages = this.singlePageMode ? 2 : 4;
-                    this.loadPageRange(0, Math.min(initialPages - 1, this.totalPages - 1), true, false).then(() => {
-                        setTimeout(() => {
-                            this.loadHighResForCurrentPage();
-                        }, 300);
-                    });
+                    this.loadPageRange(this.currentPage, Math.min(this.currentPage + initialPages - 1, this.totalPages - 1), true, false)
+                        .then(() => {
+                            setTimeout(() => {
+                                this.loadHighResForCurrentPage();
+                            }, 300);
+                        });
                 } else if (this.jsonData && this.lowResImages.length > 0 && !this.isLoading) {
                     this.pages = new Array(this.totalPages);
-                    const initialPages = this.singlePageMode ? 2 : 4;
-                    this.loadPageRangeFromJSON(0, Math.min(initialPages - 1, this.totalPages - 1), false).then(() => {
-                        setTimeout(() => {
-                            this.loadHighResForCurrentPageFromJSON();
-                        }, 300);
-                    });
+                    this.loadPageRangeFromJSON(this.currentPage, Math.min(this.currentPage + initialPages - 1, this.totalPages - 1), false)
+                        .then(() => {
+                            setTimeout(() => {
+                                this.loadHighResForCurrentPageFromJSON();
+                            }, 300);
+                        });
                 }
             }, 300);
         });
