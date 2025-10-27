@@ -41,12 +41,13 @@
         <div id="thumbnailGrid"></div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="./js/turnpage.js?v=4"></script>
+    <script src="./js/turnpage.js?v=1.84"></script>
     <script>
         const turnpage = new TurnPage('turnpage', {
-            // pdfUrl: 'SampleDoc.pdf',
+            //  pdfUrl: 'SampleDoc.pdf',
              jsonUrl: 'SampleDoc/index.json',
-            autoLoad: true,
+             startWithCover : true,
+             autoLoad: true,
         });
     </script>
 </body>
