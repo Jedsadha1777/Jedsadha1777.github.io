@@ -9,6 +9,14 @@ body {
     overflow: hidden;
     touch-action: none;
     -webkit-overflow-scrolling: auto;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    position: fixed;
+     top: 0;
+     left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 button {
@@ -24,6 +32,7 @@ button {
 
 button:disabled {
     cursor: not-allowed;
+    transition: width 0.3s ease, height 0.3s ease;
 }
 
 /* ===== CONTAINER ===== */
@@ -72,6 +81,19 @@ button:disabled {
     transition: opacity 0.3s ease;
     max-width: 1280px;
 }
+
+@supports (-webkit-touch-callout: none) {
+    /* iOS specific fixes */
+    #controls {
+        padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+    
+    body {
+        height: 100vh;
+        height: -webkit-fill-available;
+    }
+}
+
 
 .control.hide {
     opacity: 0;
